@@ -33,6 +33,16 @@ class AnalogView extends WatchUi.WatchFace {
     private var _moonBuf as Graphics.BufferedBitmapReference or Null = null;
     private var _moonBucket as Number = -1;   // hour bucket the buffer was baked for
 
+    // Precomputed constant geometry (built once, reused every frame).
+    private var _heartHx as Lang.Array or Null = null; // parametric heart curve x
+    private var _heartHy as Lang.Array or Null = null; // ...and y (recentre baked in)
+    private var _tickSin as Lang.Array or Null = null;  // 24-hour ring tick sin/cos
+    private var _tickCos as Lang.Array or Null = null;
+    private var _gradArcs as Lang.Array or Null = null; // cached gradient-arc colour steps
+    private var _gradCx as Number = 0;                  // centre/radius the steps were built for
+    private var _gradCy as Number = 0;
+    private var _gradR as Number = 0;
+
     function initialize() {
         WatchFace.initialize();
     }
@@ -98,10 +108,12 @@ class AnalogView extends WatchUi.WatchFace {
     //! outer ring). halfWidth spans the hand's full width.
     private function drawHandCut(dc as Graphics.Dc, cx as Number, cy as Number,
             angle as Float, rc as Float, halfWidth as Float) as Void {
-        var dx = Math.sin(angle);
-        var dy = -Math.cos(angle);
-        var px = Math.cos(angle);
-        var py = Math.sin(angle);
+        var sin = Math.sin(angle);
+        var cos = Math.cos(angle);
+        var dx = sin;
+        var dy = -cos;
+        var px = cos;
+        var py = sin;
         var mx = cx + rc * dx;
         var my = cy + rc * dy;
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
@@ -391,38 +403,59 @@ class AnalogView extends WatchUi.WatchFace {
         // Thin gradient arc (black -> light gray -> black) outside each field
         // (interactive only).
         if (!_isSleeping) {
-            var rArc = (radius * 0.97).toNumber();
-            drawGradientArc(dc, cx, cy, rArc, 45, 30, 0.8);
-            drawGradientArc(dc, cx, cy, rArc, 135, 30, 1.0);
-            drawGradientArc(dc, cx, cy, rArc, 225, 30, 0.6);
-            drawGradientArc(dc, cx, cy, rArc, 315, 30, 0.6);
+            if (_gradArcs == null) {
+                buildGradientArcs(cx, cy, (radius * 0.97).toNumber());
+            }
+            drawGradientArcs(dc);
         }
     }
 
-    //! Draw a thin arc centred at centerDeg (+/- spanDeg) whose grey level
-    //! fades black -> light gray -> black, by stepping through short sub-arcs.
-    private function drawGradientArc(dc as Graphics.Dc, cx as Number, cy as Number,
-            r as Number, centerDeg as Number, spanDeg as Number, intensity as Float) as Void {
-        // Short straight chords instead of sub-arcs: drawLine is ~10x cheaper than
-        // drawArc, and at this segment count the chord deviates well under a pixel.
+    //! Build the four gradient arcs once. Each is a thin arc centred at centerDeg
+    //! (+/- spanDeg) whose grey level fades black -> light gray -> black, stepped
+    //! through short real sub-arcs. Only the per-step angles and colours are
+    //! constant per device, so they are precomputed here; the per-frame draw is
+    //! just setColor + drawArc (a true arc, so the curve stays smooth).
+    private function buildGradientArcs(cx as Number, cy as Number, r as Number) as Void {
+        _gradCx = cx;
+        _gradCy = cy;
+        _gradR = r;
+        var specs = [[45, 0.8], [135, 1.0], [225, 0.6], [315, 0.6]];
+        var spanDeg = 30;
         var segs = 12;
-        var rad = Math.PI / 180.0;
+        var arcs = new [specs.size()];
+        for (var n = 0; n < specs.size(); n++) {
+            var centerDeg = specs[n][0];
+            var intensity = specs[n][1];
+            // Each step is [startDeg, endDeg, color]; sub-arcs overlap by 1 deg so
+            // the joins between colour steps leave no gap.
+            var steps = new [segs];
+            for (var k = 0; k < segs; k++) {
+                var t0 = k / (segs * 1.0);
+                var t1 = (k + 1) / (segs * 1.0);
+                var a0 = centerDeg - spanDeg + 2.0 * spanDeg * t0;
+                var a1 = centerDeg - spanDeg + 2.0 * spanDeg * t1;
+                var lvl = intensity * Math.sin(Math.PI * (t0 + t1) / 2.0); // 0 at ends, 1 at center
+                var g = (lvl * 170).toNumber();                            // 0..0xAA
+                steps[k] = [
+                    (a0 - 1.0).toNumber(), (a1 + 1.0).toNumber(),
+                    (g << 16) | (g << 8) | g
+                ];
+            }
+            arcs[n] = steps;
+        }
+        _gradArcs = arcs;
+    }
+
+    //! Draw the precomputed gradient arcs as real arcs.
+    private function drawGradientArcs(dc as Graphics.Dc) as Void {
         dc.setPenWidth(2);
-        var aStart = (centerDeg - spanDeg) * rad;
-        var x0 = cx + r * Math.cos(aStart);
-        var y0 = cy - r * Math.sin(aStart);
-        for (var k = 0; k < segs; k++) {
-            var t0 = k / (segs * 1.0);
-            var t1 = (k + 1) / (segs * 1.0);
-            var lvl = intensity * Math.sin(Math.PI * (t0 + t1) / 2.0); // 0 at ends, 1 at center
-            var g = (lvl * 170).toNumber();                // 0..0xAA
-            dc.setColor((g << 16) | (g << 8) | g, Graphics.COLOR_TRANSPARENT);
-            var a1 = (centerDeg - spanDeg + 2.0 * spanDeg * t1) * rad;
-            var x1 = cx + r * Math.cos(a1);
-            var y1 = cy - r * Math.sin(a1);
-            dc.drawLine(x0, y0, x1, y1);
-            x0 = x1;
-            y0 = y1;
+        for (var n = 0; n < _gradArcs.size(); n++) {
+            var steps = _gradArcs[n];
+            for (var k = 0; k < steps.size(); k++) {
+                var s = steps[k];
+                dc.setColor(s[2], Graphics.COLOR_TRANSPARENT);
+                dc.drawArc(_gradCx, _gradCy, _gradR, Graphics.ARC_COUNTER_CLOCKWISE, s[0], s[1]);
+            }
         }
     }
 
@@ -525,10 +558,20 @@ class AnalogView extends WatchUi.WatchFace {
         if (!_isSleeping) {
             var tIn = radius * 0.31;
             var tOut = radius * 0.35;
+            if (_tickSin == null) {
+                var ts24 = new [24];
+                var tc24 = new [24];
+                for (var i = 0; i < 24; i++) {
+                    var ta = i * Math.PI / 12.0;
+                    ts24[i] = Math.sin(ta);
+                    tc24[i] = Math.cos(ta);
+                }
+                _tickSin = ts24;
+                _tickCos = tc24;
+            }
             for (var i = 0; i < 24; i++) {
-                var ta = i * Math.PI / 12.0;
-                var ts = Math.sin(ta);
-                var tc = Math.cos(ta);
+                var ts = _tickSin[i];
+                var tc = _tickCos[i];
                 if (i % 6 == 0) {
                     dc.setPenWidth(2);
                 } else {
@@ -663,16 +706,30 @@ class AnalogView extends WatchUi.WatchFace {
     //! parametric heart curve as one filled polygon. Points must be integers
     //! for fillPolygon to fill (floats render as edges only).
     private function drawHeart(dc as Graphics.Dc, cx as Numeric, cy as Numeric, w as Float) as Void {
+        // The curve shape is constant; only scale/position change. Build the
+        // unit-curve points once (+6 recenter baked into hy), then per frame it
+        // is just a scale+offset -- no per-frame trig.
+        if (_heartHx == null) {
+            var n = 40;
+            var hxs = new [n];
+            var hys = new [n];
+            for (var i = 0; i < n; i++) {
+                var t = i * (Math.PI * 2.0 / n);
+                var st = Math.sin(t);
+                hxs[i] = 16.0 * st * st * st;
+                hys[i] = 13.0 * Math.cos(t) - 5.0 * Math.cos(2.0 * t)
+                    - 2.0 * Math.cos(3.0 * t) - Math.cos(4.0 * t) + 6.0;
+            }
+            _heartHx = hxs;
+            _heartHy = hys;
+        }
         var scale = w / 32.0;
-        var steps = 40;
+        var hx = _heartHx;
+        var hy = _heartHy;
+        var steps = hx.size();
         var pts = new [steps];
         for (var i = 0; i < steps; i++) {
-            var t = i * (Math.PI * 2.0 / steps);
-            var st = Math.sin(t);
-            var hx = 16.0 * st * st * st;
-            var hy = 13.0 * Math.cos(t) - 5.0 * Math.cos(2.0 * t) - 2.0 * Math.cos(3.0 * t) - Math.cos(4.0 * t);
-            // +6 recenters the curve's bbox on cy.
-            pts[i] = [(cx + scale * hx).toNumber(), (cy - scale * (hy + 6.0)).toNumber()];
+            pts[i] = [(cx + scale * hx[i]).toNumber(), (cy - scale * hy[i]).toNumber()];
         }
         dc.fillPolygon(pts);
     }
@@ -813,7 +870,7 @@ class AnalogView extends WatchUi.WatchFace {
             angle as Float, innerR as Float, length as Float) as Void {
         var sin = Math.sin(angle);
         var cos = Math.cos(angle);
-        var split = length * 0.87;
+        var split = length * 0.80; // accent tip = outer ~20% of the hand
         var x0 = cx + innerR * sin;
         var y0 = cy - innerR * cos;
         var xs = cx + split * sin;
@@ -838,10 +895,12 @@ class AnalogView extends WatchUi.WatchFace {
     //! at the given angle (radians, clockwise from 12 o'clock).
     private function drawHand(dc as Graphics.Dc, cx as Number, cy as Number,
             angle as Float, innerR as Float, length as Float, penWidth as Number, color as Number) as Void {
-        var dx = Math.sin(angle);          // along the hand (outward)
-        var dy = -Math.cos(angle);
-        var px = Math.cos(angle);          // perpendicular
-        var py = Math.sin(angle);
+        var sin = Math.sin(angle);
+        var cos = Math.cos(angle);
+        var dx = sin;                      // along the hand (outward)
+        var dy = -cos;
+        var px = cos;                      // perpendicular
+        var py = sin;
         var hw = penWidth / 2.0;
         var ox = cx + length * dx;         // outer tip (kept rounded)
         var oy = cy + length * dy;
