@@ -16,7 +16,7 @@ import Toybox.Weather;
 //! center hub, four cardinal data fields and four diagonal radial fields.
 //!   up = body/movement (complication)   down = body/movement (complication)
 //!   left = weather + temperature   right = time + date
-//!   NE = energy (complication)  SE = height (complication)  SW = timezone  NW = sunrise/sunset
+//!   NE = energy (compl)  SE = height (compl)  SW = timezone  NW = time/pos (compl)
 //!
 //! In always-on (low-power) mode the OS dims the panel and pixel-shifts for
 //! burn-in, so we keep full colours. We only drop the elements that add lit
@@ -45,9 +45,10 @@ class AnalogView extends WatchUi.WatchFace {
     private const SLOT_NE = 1; // energy
     private const SLOT_N = 2;  // body/movement (up)
     private const SLOT_S = 3;  // body/movement (down)
-    private const SLOT_COUNT = 4;
+    private const SLOT_NW = 4; // time/position
+    private const SLOT_COUNT = 5;
     private var _compId as Lang.Array = new [SLOT_COUNT];
-    private var _compVal as Lang.Array = ["", "", "", ""];
+    private var _compVal as Lang.Array = ["", "", "", "", ""];
     private var _compCbRegistered as Boolean = false;
     // Last-frame geometry, cached so the editor's tap hit-test can locate fields.
     private var _cx as Number = 0;
@@ -451,6 +452,7 @@ class AnalogView extends WatchUi.WatchFace {
             _compId[SLOT_NE] = new Complications.Id(Complications.COMPLICATION_TYPE_INTENSITY_MINUTES);
             _compId[SLOT_N] = new Complications.Id(Complications.COMPLICATION_TYPE_HEART_RATE);
             _compId[SLOT_S] = new Complications.Id(Complications.COMPLICATION_TYPE_STEPS);
+            _compId[SLOT_NW] = new Complications.Id(Complications.COMPLICATION_TYPE_SUNSET);
         }
         if (Application has :WatchFaceConfig) {
             var settings = Application.WatchFaceConfig.getSettings(null);
@@ -508,7 +510,15 @@ class AnalogView extends WatchUi.WatchFace {
             var c = Complications.getComplication(id);
             if (c != null && c.value != null) {
                 var v = c.value;
-                return (v instanceof Lang.Float || v instanceof Lang.Double) ? v.format("%d") : v.toString();
+                var vs = (v instanceof Lang.Float || v instanceof Lang.Double) ? v.format("%d") : v.toString();
+                var t = id.getType();
+                var pct = t == Complications.COMPLICATION_TYPE_BATTERY
+                    || t == Complications.COMPLICATION_TYPE_BODY_BATTERY
+                    || t == Complications.COMPLICATION_TYPE_PULSE_OX;
+                if (pct && vs.find("%") == null) {
+                    vs += "%";
+                }
+                return vs;
             }
         } catch (ex) {
         }
@@ -546,6 +556,12 @@ class AnalogView extends WatchUi.WatchFace {
         if (type == Complications.COMPLICATION_TYPE_WEEKLY_BIKE_DISTANCE) { return "BIK"; }
         if (type == Complications.COMPLICATION_TYPE_ALTITUDE) { return "ALT"; }
         if (type == Complications.COMPLICATION_TYPE_SEA_LEVEL_PRESSURE) { return "BAR"; }
+        if (type == Complications.COMPLICATION_TYPE_SUNRISE) { return "R"; }
+        if (type == Complications.COMPLICATION_TYPE_SUNSET) { return "S"; }
+        if (type == Complications.COMPLICATION_TYPE_DATE) { return ""; }
+        if (type == Complications.COMPLICATION_TYPE_WEEKDAY_MONTHDAY) { return ""; }
+        if (type == Complications.COMPLICATION_TYPE_CALENDAR_EVENTS) { return "EVT"; }
+        if (type == Complications.COMPLICATION_TYPE_BATTERY) { return "BAT"; }
         return "?";
     }
 
@@ -564,13 +580,29 @@ class AnalogView extends WatchUi.WatchFace {
         return "";
     }
 
-    //! Inline "LABEL value" text for the diagonal (NE/SE) radial fields.
+    //! Inline "LABEL value" text for a diagonal radial field (label omitted if "").
     private function compInline(slot as Number, fallback as String) as String {
         var id = _compId[slot];
         if (id == null) {
             return fallback;
         }
-        return compLabel(id.getType()) + " " + slotValue(slot);
+        var lbl = compLabel(id.getType());
+        var val = slotValue(slot);
+        return (lbl.length() > 0) ? (lbl + " " + val) : val;
+    }
+
+    //! NW field text. Sun types keep the nice dynamic "next event" display
+    //! (sunText); other time/position types show the complication value.
+    private function nwFieldText() as String {
+        var id = _compId[SLOT_NW];
+        if (id == null) {
+            return sunText();
+        }
+        var t = id.getType();
+        if (t == Complications.COMPLICATION_TYPE_SUNRISE || t == Complications.COMPLICATION_TYPE_SUNSET) {
+            return sunText();
+        }
+        return compInline(SLOT_NW, sunText());
     }
 
     //! Complication-changed callback (system push) -> refresh + redraw.
@@ -618,7 +650,8 @@ class AnalogView extends WatchUi.WatchFace {
             [SLOT_N, _cx, _cy - r * 0.58],
             [SLOT_S, _cx, _cy + r * 0.60],
             [SLOT_NE, _cx + r * 0.58, _cy - r * 0.58],
-            [SLOT_SE, _cx + r * 0.58, _cy + r * 0.58]
+            [SLOT_SE, _cx + r * 0.58, _cy + r * 0.58],
+            [SLOT_NW, _cx - r * 0.58, _cy - r * 0.58]
         ];
         var best = null;
         var bestD = r * 0.22; // tap tolerance
@@ -653,7 +686,7 @@ class AnalogView extends WatchUi.WatchFace {
         }
         // NE energy (slot 1) and SE height (slot 0) complications, inline.
         var imText = compInline(SLOT_NE, "IM " + intensityMinutesText());
-        var sun = sunText();
+        var sun = nwFieldText();
         var utc = swFieldText();
         var fl = compInline(SLOT_SE, "FL " + floorsText());
         // Sleep state is part of the key: the gradient arcs are baked in only when
