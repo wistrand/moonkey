@@ -1,0 +1,5 @@
+project.manifest = manifest.xml
+
+# Sources live in ./src instead of the default ./source
+base.sourcePath = src
+base.resourcePath = resources
