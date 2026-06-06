@@ -421,7 +421,7 @@ class AnalogView extends WatchUi.WatchFace {
         _gradR = r;
         var specs = [[45, 0.8], [135, 1.0], [225, 0.6], [315, 0.6]];
         var spanDeg = 30;
-        var segs = 12;
+        var segs = 8;
         var arcs = new [specs.size()];
         for (var n = 0; n < specs.size(); n++) {
             var centerDeg = specs[n][0];
@@ -626,7 +626,7 @@ class AnalogView extends WatchUi.WatchFace {
     //! Draw a full thin circle whose grey level peaks (light gray) at peakDeg
     //! and fades to black at the opposite side -- a soft highlight at max sun.
     private function drawSunRing(dc as Graphics.Dc, cx as Number, cy as Number, r as Number, peakDeg as Number) as Void {
-        var segs = 12;
+        var segs = 8;
         dc.setPenWidth(1);
         for (var k = 0; k < segs; k++) {
             var a0 = k * 360.0 / segs;
