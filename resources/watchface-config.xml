@@ -1,0 +1,36 @@
+<resources xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <!-- Native on-device watch-face editor (fenix 8+ / API 5.1.0): accent colour
+         and (repurposing the "style" selector) the SW-field timezone. Ignored on
+         devices without the editor (e.g. MARQ 2) -> code defaults (amber / UTC).
+         Style ids MUST match the TZ_OFFSET / TZ_LABEL array indices in code. -->
+    <watchface-config>
+        <styles>
+            <style id="0" label="@Strings.tzUTC" default="true"/>
+            <style id="1" label="@Strings.tzLondon"/>
+            <style id="2" label="@Strings.tzStockholm"/>
+            <style id="3" label="@Strings.tzTehran"/>
+            <style id="4" label="@Strings.tzDubai"/>
+            <style id="5" label="@Strings.tzIndia"/>
+            <style id="6" label="@Strings.tzTokyo"/>
+            <style id="7" label="@Strings.tzSydney"/>
+            <style id="8" label="@Strings.tzNewYork"/>
+            <style id="9" label="@Strings.tzLosAngeles"/>
+        </styles>
+        <accentColors allowAny="true"/>
+        <!-- Data colour for the cardinal (N/E/S/W) field readouts + weather glyphs. -->
+        <dataColors allowAny="true"/>
+        <!-- SE radial (slot 0): height data. NE radial (slot 1): energy data. -->
+        <data>
+            <complication id="0">
+                <type default="true">Complications.COMPLICATION_TYPE_FLOORS_CLIMBED</type>
+                <type>Complications.COMPLICATION_TYPE_ALTITUDE</type>
+                <type>Complications.COMPLICATION_TYPE_SEA_LEVEL_PRESSURE</type>
+            </complication>
+            <complication id="1">
+                <type default="true">Complications.COMPLICATION_TYPE_INTENSITY_MINUTES</type>
+                <type>Complications.COMPLICATION_TYPE_CALORIES</type>
+                <type>Complications.COMPLICATION_TYPE_BODY_BATTERY</type>
+            </complication>
+        </data>
+    </watchface-config>
+</resources>

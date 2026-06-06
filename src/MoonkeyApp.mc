@@ -9,6 +9,12 @@ class MoonkeyApp extends Application.AppBase {
     }
 
     function getInitialView() as [WatchUi.Views] or [WatchUi.Views, WatchUi.InputDelegates] {
-        return [ new AnalogView() ];
+        var view = new AnalogView();
+        // Pair a watch-face delegate so the native editor's accent-colour edits
+        // preview live (devices with the watch-face editor); harmless elsewhere.
+        if (WatchUi has :WatchFaceDelegate) {
+            return [view, new AnalogWatchFaceDelegate(view)];
+        }
+        return [view];
     }
 }

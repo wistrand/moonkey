@@ -1,5 +1,7 @@
 import Toybox.Activity;
 import Toybox.ActivityMonitor;
+import Toybox.Application;
+import Toybox.Complications;
 import Toybox.Graphics;
 import Toybox.Position;
 import Toybox.Lang;
@@ -14,15 +16,39 @@ import Toybox.Weather;
 //! center hub, four cardinal data fields and four diagonal radial fields.
 //!   up = heart rate (in a heart)   down = steps
 //!   left = weather + temperature   right = time + date
-//!   NE = intensity min  SE = floors  SW = UTC  NW = sunrise/sunset
+//!   NE = energy (complication)  SE = height (complication)  SW = timezone  NW = sunrise/sunset
 //!
 //! In always-on (low-power) mode the OS dims the panel and pixel-shifts for
 //! burn-in, so we keep full colours. We only drop the elements that add lit
 //! pixels with no benefit at a glance: the filled heart and the second hand.
 class AnalogView extends WatchUi.WatchFace {
 
-    private const DAYLIGHT_COLOR = 0xFFAA00; // amber for the day/night arc
-    private const ACCENT_COLOR = DAYLIGHT_COLOR; // accent matches the day arc
+    private const DAYLIGHT_COLOR = 0xFFAA00; // default amber accent
+    // Accent colour: drives the hands, the day/night daylight arc, and the
+    // current-time pointer. Defaults to amber; user-selectable via the native
+    // watch-face editor (fenix 8+, API 5.1.0); falls back to amber elsewhere.
+    private var _accentColor as Number = DAYLIGHT_COLOR;
+    private var _configTried as Boolean = false;
+
+    // SW radial timezone, selected by repurposing the watch-face-config "style"
+    // selector. _tzStyle indexes these tables (id N in watchface-config.xml ->
+    // index N here). Fixed UTC offsets in hours -- NO DST (CIQ has no tz database).
+    private var _tzStyle as Number = 0;
+    private const TZ_OFFSET = [0.0, 0.0, 1.0, 3.5, 4.0, 5.5, 9.0, 10.0, -5.0, -8.0];
+    private const TZ_LABEL = ["UTC", "LON", "STO", "TEH", "DXB", "IND", "TYO", "SYD", "NYC", "LAX"];
+
+    // Configurable complications: SE (height) = "data" slot 0, NE (energy) =
+    // slot 1. _seText/_neText are cached "LABEL value" strings refreshed by the
+    // change callback; empty -> the field falls back to its built-in readout.
+    private var _seCompId as Complications.Id or Null = null;
+    private var _neCompId as Complications.Id or Null = null;
+    private var _seText as String = "";
+    private var _neText as String = "";
+    private var _compCbRegistered as Boolean = false;
+
+    // Data colour for the cardinal (N/E/S/W) field readouts and weather glyphs.
+    // Defaults to light gray; user-selectable via the editor's data-colour picker.
+    private var _dataColor as Number = 0xAAAAAA; // = light gray (COLOR_LT_GRAY)
     private const RING_R_FRAC = 0.25;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
     private const MOON_TILT_OFFSET = -1.5707963; // -90 deg: align baked moon orientation with the sky
 
@@ -66,6 +92,7 @@ class AnalogView extends WatchUi.WatchFace {
         dc.clear();
 
         ensureVectorFont(dc);
+        ensureConfig();
         // Moon first: its bitmap's black corners would otherwise clip the
         // day/night arc, so the arc is drawn on top.
         if (!_isSleeping) {
@@ -90,10 +117,10 @@ class AnalogView extends WatchUi.WatchFace {
         var innerR = radius * (RING_R_FRAC + 0.06);
 
         // Hour hand: tapered amber baton ending in an open ring (skeleton) tip.
-        drawHourHand(dc, cx, cy, hourAngle, innerR, radius * 0.50, 9, ACCENT_COLOR);
+        drawHourHand(dc, cx, cy, hourAngle, innerR, radius * 0.50, 9, _accentColor);
 
         // Minute hand: tapered amber lance converging to a sharp point.
-        drawMinuteHand(dc, cx, cy, minuteAngle, innerR, radius * 0.80, 7, ACCENT_COLOR);
+        drawMinuteHand(dc, cx, cy, minuteAngle, innerR, radius * 0.80, 7, _accentColor);
 
         // Second hand: white with an accent-coloured tip (skipped in low power).
         if (!_isSleeping) {
@@ -359,7 +386,7 @@ class AnalogView extends WatchUi.WatchFace {
 
     //! Draw the quarter-hour markers only (12, 3, 6, 9).
     private function drawTicks(dc as Graphics.Dc, cx as Number, cy as Number, radius as Number) as Void {
-        dc.setColor(ACCENT_COLOR, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(_accentColor, Graphics.COLOR_TRANSPARENT);
         dc.setPenWidth(4);
         var outer = radius - 2;
         var inner = radius - 16;
@@ -392,16 +419,157 @@ class AnalogView extends WatchUi.WatchFace {
         }
     }
 
+    //! Read accent colour and timezone style from the native watch-face editor
+    //! (devices with the watch-face configuration API, API 5.1.0). getSettings is
+    //! null on devices without the editor (e.g. MARQ 2) -> keep the defaults.
+    private function ensureConfig() as Void {
+        if (_configTried) {
+            return;
+        }
+        _configTried = true;
+        // Defaults preserve the old fields: SE = floors, NE = intensity minutes.
+        if (Toybox has :Complications) {
+            _seCompId = new Complications.Id(Complications.COMPLICATION_TYPE_FLOORS_CLIMBED);
+            _neCompId = new Complications.Id(Complications.COMPLICATION_TYPE_INTENSITY_MINUTES);
+        }
+        if (Application has :WatchFaceConfig) {
+            var settings = Application.WatchFaceConfig.getSettings(null);
+            if (settings != null) {
+                var ac = settings.accentColor;
+                if (ac != null && ac.color != null) {
+                    _accentColor = ac.color as Number;
+                }
+                if (settings.styleId != null) {
+                    _tzStyle = settings.styleId as Number;
+                }
+                var dcol = settings.complicationColor;
+                if (dcol != null && dcol.color != null) {
+                    _dataColor = dcol.color as Number;
+                }
+                var cs = settings.complicationSettings;
+                if (cs != null) {
+                    for (var i = 0; i < cs.size(); i++) {
+                        var cid = cs[i].complicationId;
+                        if (cid != null) {
+                            if (cs[i].uniqueIdentifier == 0) {
+                                _seCompId = cid;
+                            } else if (cs[i].uniqueIdentifier == 1) {
+                                _neCompId = cid;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        subscribeComps();
+    }
+
+    //! Subscribe to the configured complications and seed their values. The
+    //! change callback keeps them fresh; the registration is done once.
+    private function subscribeComps() as Void {
+        if (!(Toybox has :Complications)) {
+            return;
+        }
+        if (!_compCbRegistered) {
+            Complications.registerComplicationChangeCallback(method(:onComplicationChange));
+            _compCbRegistered = true;
+        }
+        if (_seCompId != null) {
+            Complications.subscribeToUpdates(_seCompId);
+        }
+        if (_neCompId != null) {
+            Complications.subscribeToUpdates(_neCompId);
+        }
+        _seText = compText(_seCompId);
+        _neText = compText(_neCompId);
+    }
+
+    //! Read a complication's current value as a "LABEL value" string ("" if none).
+    private function compText(id as Complications.Id or Null) as String {
+        if (!(Toybox has :Complications) || id == null) {
+            return "";
+        }
+        try {
+            var c = Complications.getComplication(id);
+            if (c != null && c.value != null) {
+                var v = c.value;
+                var vs = (v instanceof Lang.Float || v instanceof Lang.Double) ? v.format("%d") : v.toString();
+                return compLabel(id.getType()) + " " + vs;
+            }
+        } catch (ex) {
+        }
+        return "";
+    }
+
+    //! Short field label for a configurable complication type (height + energy).
+    private function compLabel(type as Complications.Type) as String {
+        if (type == Complications.COMPLICATION_TYPE_ALTITUDE) { return "ALT"; }
+        if (type == Complications.COMPLICATION_TYPE_SEA_LEVEL_PRESSURE) { return "BAR"; }
+        if (type == Complications.COMPLICATION_TYPE_CALORIES) { return "CAL"; }
+        if (type == Complications.COMPLICATION_TYPE_BODY_BATTERY) { return "BB"; }
+        if (type == Complications.COMPLICATION_TYPE_INTENSITY_MINUTES) { return "IM"; }
+        return "FL"; // floors
+    }
+
+    //! Complication-changed callback (system push) -> refresh + redraw.
+    function onComplicationChange(id as Complications.Id) as Void {
+        var hit = false;
+        if (_seCompId != null && id.equals(_seCompId)) {
+            _seText = compText(_seCompId);
+            hit = true;
+        }
+        if (_neCompId != null && id.equals(_neCompId)) {
+            _neText = compText(_neCompId);
+            hit = true;
+        }
+        if (hit) {
+            WatchUi.requestUpdate();
+        }
+    }
+
+    //! Set the accent colour and redraw. Called by the watch-face delegate when
+    //! the user edits the accent in the native editor (live preview).
+    function setAccentColor(color as Number) as Void {
+        _accentColor = color;
+        WatchUi.requestUpdate();
+    }
+
+    //! Set the SW-field timezone style and redraw (live editor preview).
+    function setTzStyle(style as Number) as Void {
+        _tzStyle = style;
+        WatchUi.requestUpdate();
+    }
+
+    //! Set the cardinal-field data colour and redraw (live editor preview).
+    function setDataColor(color as Number) as Void {
+        _dataColor = color;
+        WatchUi.requestUpdate();
+    }
+
+    //! Set a complication slot (0 = SE, 1 = NE) from a live editor edit:
+    //! re-subscribe + redraw.
+    function setComplication(slot as Number, id as Complications.Id) as Void {
+        if (slot == 0) {
+            _seCompId = id;
+        } else if (slot == 1) {
+            _neCompId = id;
+        }
+        subscribeComps();
+        WatchUi.requestUpdate();
+    }
+
     //! Draw the four diagonal data fields (curved radial text), blitting a cached
     //! pool buffer that is only re-rendered when the field text changes.
     private function drawRadialFields(dc as Graphics.Dc, cx as Number, cy as Number, radius as Numeric) as Void {
         if (!(dc has :drawRadialText) || _vectorFont == null) {
             return;
         }
-        var imText = "IM " + intensityMinutesText();
+        // NE: the configured energy complication, or intensity minutes fallback.
+        var imText = (_neText.length() > 0) ? _neText : ("IM " + intensityMinutesText());
         var sun = sunText();
-        var utc = "UTC " + utcText();
-        var fl = "FL " + floorsText();
+        var utc = swFieldText();
+        // SE: the configured height complication, or floors as a fallback.
+        var fl = (_seText.length() > 0) ? _seText : ("FL " + floorsText());
         // Sleep state is part of the key: the gradient arcs are baked in only when
         // awake, so an enter/exit-sleep transition forces a rebuild.
         var key = imText + "|" + sun + "|" + utc + "|" + fl + (_isSleeping ? "|s" : "|w");
@@ -528,9 +696,17 @@ class AnalogView extends WatchUi.WatchFace {
         return "--";
     }
 
-    private function utcText() as String {
-        var info = Gregorian.utcInfo(Time.now(), Time.FORMAT_SHORT);
-        return Lang.format("$1$:$2$", [info.hour.format("%02d"), info.min.format("%02d")]);
+    //! SW field: a short timezone label + the time at that zone's fixed UTC
+    //! offset (selected via the watch-face-config style; UTC default; no DST).
+    private function swFieldText() as String {
+        var i = _tzStyle;
+        if (i < 0 || i >= TZ_OFFSET.size()) {
+            i = 0;
+        }
+        var secs = Time.now().value() + (TZ_OFFSET[i] * 3600).toNumber();
+        var info = Gregorian.utcInfo(new Time.Moment(secs), Time.FORMAT_SHORT);
+        return TZ_LABEL[i] + " " + Lang.format("$1$:$2$",
+            [info.hour.format("%02d"), info.min.format("%02d")]);
     }
 
     //! Location for sun calculations: prefer the cached weather observation
@@ -645,7 +821,7 @@ class AnalogView extends WatchUi.WatchFace {
         if (sr != null && ss != null) {
             // In always-on, match the night-track width to keep lit pixels low.
             dc.setPenWidth(_isSleeping ? 2 : 3);
-            dc.setColor(DAYLIGHT_COLOR, Graphics.COLOR_TRANSPARENT);
+            dc.setColor(_accentColor, Graphics.COLOR_TRANSPARENT);
             dc.drawArc(cx, cy, r, Graphics.ARC_CLOCKWISE,
                 hourToArcDegrees(localHour(sr)), hourToArcDegrees(localHour(ss)));
         }
@@ -656,7 +832,7 @@ class AnalogView extends WatchUi.WatchFace {
         if (sr != null && ss != null) {
             var nowSec = now.value();
             if (nowSec > sr.value() && nowSec < ss.value()) {
-                pointerColor = DAYLIGHT_COLOR;
+                pointerColor = _accentColor;
             }
         }
         var clock = System.getClockTime();
@@ -734,7 +910,7 @@ class AnalogView extends WatchUi.WatchFace {
         // Right: date above the time. The time sits at the same y as the
         // temperature on the left so the two bottom values line up.
         var rightX = cx + off + radius * 0.07;
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
         dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, dateText(),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         drawValue(dc, rightX, cy + 22, timeOfDayText());
@@ -742,7 +918,7 @@ class AnalogView extends WatchUi.WatchFace {
 
     //! Draw a single value centered at (x, y).
     private function drawValue(dc as Graphics.Dc, x as Numeric, y as Numeric, value as String) as Void {
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
         dc.drawText(x, y, Graphics.FONT_TINY, value,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
@@ -756,7 +932,7 @@ class AnalogView extends WatchUi.WatchFace {
         dc.fillRectangle(x0, y, w, 2);
         var fw = (w * chance / 100.0).toNumber();
         if (fw > 0) {
-            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
             dc.fillRectangle(x0, y, fw, 2);
         }
     }
@@ -772,7 +948,7 @@ class AnalogView extends WatchUi.WatchFace {
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
             drawHeart(dc, x, y - textH * 1.0, iconH / 0.6875);
         }
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
         dc.drawText(x, y - textH * 0.05, Graphics.FONT_TINY, heartRateText(),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
@@ -883,7 +1059,7 @@ class AnalogView extends WatchUi.WatchFace {
         }
 
         if (category.equals("clear")) {
-            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
             dc.fillCircle(x, y, r * 0.6);
             dc.setPenWidth(2);
             for (var i = 0; i < 8; i++) {
@@ -897,7 +1073,7 @@ class AnalogView extends WatchUi.WatchFace {
 
         if (category.equals("fog")) {
             // Stacked horizontal lines with staggered ends (drifting fog/haze).
-            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
             dc.setPenWidth(2);
             for (var i = 0; i < 4; i++) {
                 var ly = y - r * 0.55 + i * r * 0.36;
@@ -908,7 +1084,7 @@ class AnalogView extends WatchUi.WatchFace {
         }
 
         // Cloud body shared by cloud / rain / snow / storm.
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
         var cloudY = (category.equals("cloud")) ? y : y - r * 0.4;
         dc.fillCircle(x - r * 0.55, cloudY, r * 0.45);
         dc.fillCircle(x + r * 0.5, cloudY, r * 0.42);
@@ -916,20 +1092,20 @@ class AnalogView extends WatchUi.WatchFace {
         dc.fillRectangle(x - r * 0.95, cloudY, r * 1.9, r * 0.5);
 
         if (category.equals("rain")) {
-            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
             dc.setPenWidth(2);
             for (var i = -1; i <= 1; i++) {
                 var dx = x + i * r * 0.5;
                 dc.drawLine(dx, cloudY + r * 0.6, dx - r * 0.15, cloudY + r * 1.1);
             }
         } else if (category.equals("snow")) {
-            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
             for (var i = -1; i <= 1; i++) {
                 dc.fillCircle(x + i * r * 0.5, cloudY + r * 0.85, 2);
             }
         } else if (category.equals("storm")) {
             // Lightning bolt below the cloud.
-            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
             dc.setPenWidth(3);
             dc.drawLine(x + r * 0.13, cloudY + r * 0.40, x - r * 0.13, cloudY + r * 0.92);
             dc.drawLine(x - r * 0.13, cloudY + r * 0.92, x + r * 0.07, cloudY + r * 0.92);
@@ -948,7 +1124,7 @@ class AnalogView extends WatchUi.WatchFace {
         if (units > 12) {
             units = 12;                             // cap at 60 kt
         }
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
         dc.setPenWidth(1);
         if (units <= 0) {
             dc.drawCircle(x, y, 3);                 // calm
@@ -1081,7 +1257,7 @@ class AnalogView extends WatchUi.WatchFace {
         dc.setPenWidth(3);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawLine(x0, y0, xs, ys);
-        dc.setColor(ACCENT_COLOR, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(_accentColor, Graphics.COLOR_TRANSPARENT);
         dc.drawLine(xs, ys, x1, y1);
         // Thin black cut at the white->accent transition.
         drawHandCut(dc, cx, cy, angle, split, 3.0);

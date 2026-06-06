@@ -1,3 +1,15 @@
 <strings>
     <string id="AppName">Moonkey</string>
+    <!-- SW radial timezone choices, shown in the native watch-face editor's
+         style picker. The short field label lives in code (TZ_LABEL). -->
+    <string id="tzUTC">UTC</string>
+    <string id="tzLondon">London</string>
+    <string id="tzStockholm">Stockholm</string>
+    <string id="tzTehran">Tehran</string>
+    <string id="tzDubai">Dubai</string>
+    <string id="tzIndia">India</string>
+    <string id="tzTokyo">Tokyo</string>
+    <string id="tzSydney">Sydney</string>
+    <string id="tzNewYork">New York</string>
+    <string id="tzLosAngeles">Los Angeles</string>
 </strings>
