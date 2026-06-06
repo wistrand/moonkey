@@ -21,13 +21,13 @@ Single full redraw per tick. Order matters for layering: clear → moon → day/
 The moon is the most involved element:
 1. **Phase** — fraction through the synodic month from a known new-moon epoch.
 2. **Shaded render (baked)** — the photo is drawn, then the unlit side darkened by a translucent-black overlay whose opacity ramps across the terminator for a soft edge; partial alpha keeps surface texture visible. This per-scanline work is expensive, so it is baked into a cached `BufferedBitmap` and only re-rendered when the hour changes (the phase barely moves between bakes). The bitmap is re-created if the system reclaims it.
-3. **Inclination** — the terminator tilts as it appears in the sky: a low-precision sun/moon ephemeris gives the bright-limb position angle, corrected by the parallactic angle for the observer's location. This is cheap and recomputed every frame so it tracks time and position.
-4. **Composite** — each frame the cached bitmap is blitted rotated by the inclination (point-sampled, about its centre) with a fixed calibration offset (`MOON_TILT_OFFSET`, −90°) that aligns the baked orientation to the sky. Point sampling (not bilinear) avoids bright-edge bleed during rotation.
+3. **Inclination** — the terminator tilts as it appears in the sky: a low-precision sun/moon ephemeris gives the bright-limb position angle, corrected by the parallactic angle for the observer's location. Computed in-code; baked together with the shading **once per hour** (it drifts ~15°/hour, so hourly is plenty — a fresh GPS fix is reflected at the next hourly bake).
+4. **Composite** — the **rotation is baked into the buffer**, not done per frame: the upright shaded moon is rendered into a transient scratch buffer, then rotated into the persistent (opaque) display buffer via one `drawBitmap2` transform with a fixed calibration offset (`MOON_TILT_OFFSET`, −90°), point-sampled (not bilinear, to avoid bright-edge bleed). **Every frame is then just a plain `drawBitmap`** — no per-frame ephemeris or rotation (≈1 ms/frame; see Performance).
 
-Why baking: alpha-blended *fills* require `setStroke`/`setFill` (not `setColor`), and a rotated terminator can't use axis-aligned scanlines — so the shading is baked upright once and the whole disc is rotated. The moon source photo has a slightly darkened limb so its bright rim doesn't survive on the shadowed side.
+Why baking: alpha-blended *fills* require `setStroke`/`setFill` (not `setColor`), a rotated terminator can't use axis-aligned scanlines, and palette buffers can't anti-alias — so the shading is baked upright in a full-colour scratch, the disc is rotated into the display buffer, and only the cheap blit happens per frame. The moon source photo has a slightly darkened limb so its bright rim doesn't survive on the shadowed side.
 
 ## Location & data sources
-- **Moon inclination** uses the observer's GPS (`Position`) first, weather observation point as fallback — so it tracks the real location and the sim's position control.
+- **Moon inclination** uses the observer's GPS (`Position`) first, weather observation point as fallback — so it tracks the real location and the sim's position control. Computed at the hourly bake (not per frame).
 - **Sun times** (day/night arc + sunrise/sunset field) use `sunLocation()`, which prefers the **weather observation location** (GPS fallback). This is correct on-device, but in the **simulator** the arc's angle/width can diverge if the simulated weather location isn't your real location — the device is authoritative.
 - Sun times, weather, HR, steps, floors, intensity from the standard `Weather`/`Activity`/`ActivityMonitor` APIs. There is no moon/astronomy API, so phase and inclination are computed in-code.
 - Local-hour mapping (arc, UTC field) converts moments via `Gregorian.info` in the device's clock timezone; a sim timezone that differs from the device shifts the arc position (not its width).
@@ -35,5 +35,11 @@ Why baking: alpha-blended *fills* require `setStroke`/`setFill` (not `setColor`)
 ## Always-on (AOD)
 The OS dims and pixel-shifts, so colours are kept. Only elements that add lit pixels without at-a-glance value are dropped when sleeping: the moon, second hand, hour ticks, sun ring, radial gradient arcs, hand cuts, and the filled heart. Everything is gated on the sleep flag set by the enter/exit-sleep callbacks.
 
+## Performance
+The whole face is re-rendered every second (the moving hands force it; a full-screen cache won't fit the 128 KB watch-face cap). Profiling (see [perf-analysis.md](perf-analysis.md)) found the per-frame hotspots are **radial vector text** (`drawRadialText`, ~7 ms/label) and **`drawArc`**. Notes:
+- **Gradient arcs** are drawn as straight `drawLine` **chords**, not `drawArc` sub-arcs — `drawLine` is ~10× cheaper per call and at 12 segments/60° the chord is sub-pixel. (The sun ring still uses `drawArc`.)
+- **The moon prebake** (above) cut its per-frame cost to ~1 ms.
+- **Radial text can't be cached**: palette buffers can't anti-alias, the full-colour→palette quantize-blit is rejected by the runtime, and four full-colour buffers bust 128 KB. Options on the table are straight/angled `drawText` (cheaper, loses the curve) vs. keeping it live.
+
 ## Build & config
-`make` builds/runs/sideloads (see `Makefile`); `make moon` regenerates the moon bitmap from the raw photo. Accent colour / timezone configurability is unresolved — see `finding-config.md` (sideloaded `.prg` can't use phone-side settings).
+`make` builds/runs/sideloads (see `Makefile`); `make moon` regenerates the moon bitmap from `data/moon-raw.jpg`. Accent colour / timezone configurability is unresolved — see [finding-config.md](finding-config.md) (sideloaded `.prg` can't use phone-side settings).

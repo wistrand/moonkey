@@ -403,17 +403,26 @@ class AnalogView extends WatchUi.WatchFace {
     //! fades black -> light gray -> black, by stepping through short sub-arcs.
     private function drawGradientArc(dc as Graphics.Dc, cx as Number, cy as Number,
             r as Number, centerDeg as Number, spanDeg as Number, intensity as Float) as Void {
+        // Short straight chords instead of sub-arcs: drawLine is ~10x cheaper than
+        // drawArc, and at this segment count the chord deviates well under a pixel.
         var segs = 12;
+        var rad = Math.PI / 180.0;
         dc.setPenWidth(2);
+        var aStart = (centerDeg - spanDeg) * rad;
+        var x0 = cx + r * Math.cos(aStart);
+        var y0 = cy - r * Math.sin(aStart);
         for (var k = 0; k < segs; k++) {
             var t0 = k / (segs * 1.0);
             var t1 = (k + 1) / (segs * 1.0);
             var lvl = intensity * Math.sin(Math.PI * (t0 + t1) / 2.0); // 0 at ends, 1 at center
             var g = (lvl * 170).toNumber();                // 0..0xAA
             dc.setColor((g << 16) | (g << 8) | g, Graphics.COLOR_TRANSPARENT);
-            var a0 = centerDeg - spanDeg + 2.0 * spanDeg * t0;
-            var a1 = centerDeg - spanDeg + 2.0 * spanDeg * t1;
-            dc.drawArc(cx, cy, r, Graphics.ARC_COUNTER_CLOCKWISE, a0.toNumber(), a1.toNumber());
+            var a1 = (centerDeg - spanDeg + 2.0 * spanDeg * t1) * rad;
+            var x1 = cx + r * Math.cos(a1);
+            var y1 = cy - r * Math.sin(a1);
+            dc.drawLine(x0, y0, x1, y1);
+            x0 = x1;
+            y0 = y1;
         }
     }
 
@@ -574,7 +583,7 @@ class AnalogView extends WatchUi.WatchFace {
     //! Draw a full thin circle whose grey level peaks (light gray) at peakDeg
     //! and fades to black at the opposite side -- a soft highlight at max sun.
     private function drawSunRing(dc as Graphics.Dc, cx as Number, cy as Number, r as Number, peakDeg as Number) as Void {
-        var segs = 20;
+        var segs = 12;
         dc.setPenWidth(1);
         for (var k = 0; k < segs; k++) {
             var a0 = k * 360.0 / segs;
