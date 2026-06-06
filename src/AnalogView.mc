@@ -42,6 +42,11 @@ class AnalogView extends WatchUi.WatchFace {
     private var _gradCx as Number = 0;                  // centre/radius the steps were built for
     private var _gradCy as Number = 0;
     private var _gradR as Number = 0;
+    // Cached radial labels: rendered once into a graphics-pool buffer (NOT the
+    // 128 KB heap) and re-rendered only when the field text changes, so the
+    // expensive per-glyph drawRadialText runs ~once/min instead of every frame.
+    private var _radBuf as Graphics.BufferedBitmapReference or Null = null;
+    private var _radKey as String or Null = null;
 
     function initialize() {
         WatchFace.initialize();
@@ -387,11 +392,52 @@ class AnalogView extends WatchUi.WatchFace {
         }
     }
 
-    //! Draw the four diagonal data fields as text curved along the dial edge.
+    //! Draw the four diagonal data fields (curved radial text), blitting a cached
+    //! pool buffer that is only re-rendered when the field text changes.
     private function drawRadialFields(dc as Graphics.Dc, cx as Number, cy as Number, radius as Numeric) as Void {
         if (!(dc has :drawRadialText) || _vectorFont == null) {
             return;
         }
+        var imText = "IM " + intensityMinutesText();
+        var sun = sunText();
+        var utc = "UTC " + utcText();
+        var fl = "FL " + floorsText();
+        // Sleep state is part of the key: the gradient arcs are baked in only when
+        // awake, so an enter/exit-sleep transition forces a rebuild.
+        var key = imText + "|" + sun + "|" + utc + "|" + fl + (_isSleeping ? "|s" : "|w");
+
+        var buf = (_radBuf != null) ? _radBuf.get() : null;
+        if (buf == null || !key.equals(_radKey)) {
+            // Pool buffer was purged, a label changed, or sleep flipped -> re-render
+            // (the only place the costly drawRadialText / drawArc run).
+            buf = renderRadialCache(dc, cx, cy, radius, imText, sun, utc, fl);
+            _radKey = key;
+        }
+        if (buf != null) {
+            dc.drawBitmap(0, 0, buf);
+        }
+    }
+
+    //! (Re)render the four radial labels -- plus the gradient arcs when awake --
+    //! into the cached transparent pool buffer and return it. Allocates the
+    //! buffer from the graphics pool on first use.
+    private function renderRadialCache(dc as Graphics.Dc, cx as Number, cy as Number, radius as Numeric,
+            imText as String, sun as String, utc as String, fl as String) as Graphics.BufferedBitmap or Null {
+        var buf = (_radBuf != null) ? _radBuf.get() : null;
+        if (buf == null) {
+            _radBuf = Graphics.createBufferedBitmap({
+                :width => dc.getWidth(),
+                :height => dc.getHeight(),
+                :alphaBlending => Graphics.ALPHA_BLENDING_FULL
+            });
+            buf = (_radBuf != null) ? _radBuf.get() : null;
+        }
+        if (buf == null) {
+            return null;
+        }
+        var bdc = buf.getDc();
+        bdc.setColor(Graphics.COLOR_TRANSPARENT, Graphics.COLOR_TRANSPARENT);
+        bdc.clear();
         // Angle is degrees counter-clockwise from 3 o'clock. Top text uses CW
         // (renders outside the baseline), bottom uses CCW (renders inside it),
         // so push the bottom radius out to keep all four the same distance.
@@ -399,19 +445,21 @@ class AnalogView extends WatchUi.WatchFace {
         var rBot = rTop + dc.getFontHeight(Graphics.FONT_XTINY) * 0.75;
         var cw = Graphics.RADIAL_TEXT_DIRECTION_CLOCKWISE;
         var ccw = Graphics.RADIAL_TEXT_DIRECTION_COUNTER_CLOCKWISE;
-        drawRadial(dc, cx, cy, rTop, 45, "IM " + intensityMinutesText(), cw);   // NE
-        drawRadial(dc, cx, cy, rTop, 135, sunText(), cw);                      // NW (R/S label)
-        drawRadial(dc, cx, cy, rBot, 225, "UTC " + utcText(), ccw);            // SW
-        drawRadial(dc, cx, cy, rBot, 315, "FL " + floorsText(), ccw);          // SE
+        bdc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+        bdc.drawRadialText(cx, cy, _vectorFont, imText, Graphics.TEXT_JUSTIFY_CENTER, 45, rTop, cw);  // NE
+        bdc.drawRadialText(cx, cy, _vectorFont, sun, Graphics.TEXT_JUSTIFY_CENTER, 135, rTop, cw);    // NW
+        bdc.drawRadialText(cx, cy, _vectorFont, utc, Graphics.TEXT_JUSTIFY_CENTER, 225, rBot, ccw);   // SW
+        bdc.drawRadialText(cx, cy, _vectorFont, fl, Graphics.TEXT_JUSTIFY_CENTER, 315, rBot, ccw);    // SE
 
-        // Thin gradient arc (black -> light gray -> black) outside each field
-        // (interactive only).
+        // Thin gradient arcs ride in the same buffer (interactive only). They are
+        // fully static, so this runs once and only re-bakes on a sleep transition.
         if (!_isSleeping) {
             if (_gradArcs == null) {
                 buildGradientArcs(cx, cy, (radius * 0.97).toNumber());
             }
-            drawGradientArcs(dc);
+            drawGradientArcs(bdc);
         }
+        return buf;
     }
 
     //! Build the four gradient arcs once. Each is a thin arc centred at centerDeg
@@ -425,7 +473,7 @@ class AnalogView extends WatchUi.WatchFace {
         _gradR = r;
         var specs = [[45, 0.8], [135, 1.0], [225, 0.6], [315, 0.6]];
         var spanDeg = 30;
-        var segs = 8;
+        var segs = 12;
         var arcs = new [specs.size()];
         for (var n = 0; n < specs.size(); n++) {
             var centerDeg = specs[n][0];
@@ -463,11 +511,6 @@ class AnalogView extends WatchUi.WatchFace {
         }
     }
 
-    private function drawRadial(dc as Graphics.Dc, cx as Number, cy as Number, r as Float,
-            angle as Number, text as String, direction as Graphics.RadialTextDirection) as Void {
-        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawRadialText(cx, cy, _vectorFont, text, Graphics.TEXT_JUSTIFY_CENTER, angle, r, direction);
-    }
 
     private function intensityMinutesText() as String {
         var info = ActivityMonitor.getInfo();

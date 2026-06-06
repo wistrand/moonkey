@@ -9,9 +9,15 @@ CPU, no per-update execution budget, ~no memory limit).
 target (marq2aviator, marq2, fenix843mm/847mm, venu3, epix2pro47mm, fr965): all report
 `watchFace = 131072` in their `compiler.json`, while the *same* hardware allows 768 KB for a
 `watchApp`, 256–512 KB for datafields/audio. So newer/flagship targets buy **no** extra
-watch-face memory; the cap never moves. The only door to >128 KB is shipping a watch *app*
-(768 KB) instead of a face — a different product (not always-on, different lifecycle), so not
-an option here. The radial-text caching dead-end below therefore stands on all targets.
+watch-face memory; the cap never moves. Shipping a watch *app* (768 KB) is a different product
+(not always-on), so not an option.
+
+**But the heap isn't the only memory.** A separate **graphics pool** (CIQ 4, `enhancedGraphicSupport`)
+holds `BufferedBitmap`s *outside* the 128 KB — **3 MB** on marq2/fenix8/epix/fr965, **4 MB** on
+venu3 (`graphicsResourcePoolSize` in each device's `simulator.json`). Buffers from
+`createBufferedBitmap` allocate there, not on the heap. That's where the moon buffers already
+live — and now the radial-label cache too (see Optimizations). This is what **overturned the old
+"can't cache radial text" dead-end**: it had been sized against the wrong (128 KB) budget.
 
 ## Profiler snapshot (6 full-draw frames captured)
 Profiler **Call Count is cumulative over all captured frames**; divide by 6 for per-frame.
@@ -30,25 +36,49 @@ Use **Actual Time** (self/exclusive), not Total.
 `drawArc`'s 420 calls = gradient arcs (4 fields × 12 segs × 6 = 288) + sun ring (20 × 6 = 120) + day/night track/arc (~12). Per frame: **48 gradient + 20 sun-ring** `drawArc`. *(Snapshot is historical: gradient and sun-ring segment counts have since been cut to 8 each, so the live `drawArc` count is lower — ~32 gradient + 8 sun-ring per frame.)*
 
 ## Findings
-1. **Radial text dominates** — `drawRadialText` ≈ **6.9 ms/label**, 4 labels = ~28 ms/frame. It runs as `<Native Code>` (no `Dc.drawRadialText` row). The cost is per-glyph AA rasterization, inherent to drawing curved vector text.
+1. **Radial text dominated** — `drawRadialText` ≈ **6.9 ms/label**, 4 labels = ~28 ms/frame. It runs as `<Native Code>` (no `Dc.drawRadialText` row). The cost is per-glyph AA rasterization, inherent to drawing curved vector text. **Now cached** (see Optimizations), so it runs ~once/min instead of every frame.
 2. **`drawLine` is ~10× cheaper than `drawArc`** (24 µs vs 248 µs) — motivated the chord experiment for the gradient/sun arcs (since reverted for looks; see below).
 3. **The moon prebake worked** — rotation+shading baked hourly dropped `drawMoon` to ~1 ms/frame.
 4. **`clear` costs ~5.4 ms/frame** — full-screen wipe, unavoidable without partial updates.
 
 ## Optimizations applied
+- **Radial labels + gradient arcs cached in a graphics-pool buffer** — the big one. The four
+  curved labels (and the static gradient arcs) are rendered into one transparent dial-sized
+  `createBufferedBitmap` (pool, **not** the 128 KB heap; `_radBuf`) and each frame is a single
+  `drawBitmap`. The costly `drawRadialText` (~28 ms) + gradient `drawArc` (~8 ms) only run when
+  the buffer is rebuilt — i.e. when a label string changes (~once/min) or on a sleep transition.
+  The cache **key includes the field text and the sleep flag**, so the arcs (awake-only) bake in
+  when awake and drop when asleep. Pool purges are handled: `get()` returns null → re-render
+  (same guard the moon uses). Verified by a scratch probe that `drawRadialText` renders into a
+  non-palette (and even `ALPHA_BLENDING_FULL`) pool buffer on AMOLED — see Dead ends, corrected.
 - **Constant geometry precomputed once, reused every frame** — hoists ~350 `sin`/`cos` calls per awake-second out of the redraw: the parametric **heart curve** (`_heartHx/_heartHy`), the **24-hour tick** sin/cos (`_tickSin/_tickCos`), and the **gradient-arc** per-step angles+colours (`_gradArcs`). Also deduped the hour/minute hand trig (computed `sin`/`cos` once each). Pure math hoisting — pixel-identical.
 - **Moon rotation prebaked** into the display buffer hourly → ~1 ms/frame blit.
 - **Gradient arcs: chords tried, reverted.** A `drawLine`-chord version (48 arcs/frame @248 µs → 48 lines @~24 µs) was a real CPU win but **looked bad** — chord faceting and butt-cap seams at the arc apex. Reverted to real `drawArc`; only the angles/colours are precomputed, so the per-frame trig is gone but the `drawArc` calls remain. Segment count cut 12 → 8 to claw some of it back.
 
-## Dead ends (don't retry)
-- **Caching radial text:** palette `BufferedBitmap`s **can't anti-alias** (Garmin docs); the
-  "render AA in full-colour then blit into a palette buffer" trick **fails** — the runtime throws
-  *"Bitmap Palette cannot be larger than the target palette"* (it won't quantize, the source
-  palette must be a subset of the target); and four **full-colour** buffers (the only AA-capable
-  option) exceed 128 KB alongside the moon. So: cached + anti-aliased + fits-memory — pick two.
-- **`ALPHA_BLENDING_FULL` buffers**: `drawRadialText`/`drawAngledText` fail to draw into them on AMOLED.
+## Corrected (were "dead ends", now overturned)
+- **Caching radial text — now done.** The old objection ("four full-colour buffers exceed 128 KB
+  alongside the moon") measured the wrong budget: those buffers live in the **3–4 MB graphics
+  pool**, not the heap. And the AA limitation is **palette-only** — full-colour pool buffers *can*
+  anti-alias (Garmin docs forbid AA only for *paletted* `BufferedBitmap`s). A scratch probe on
+  marq2aviator confirmed `drawRadialText` renders into a non-palette pool buffer (visible,
+  anti-aliased). So: cached + anti-aliased + fits-memory is achievable — the pool is the missing leg.
+- **`ALPHA_BLENDING_FULL` buffers — did not reproduce.** The earlier "`drawRadialText`/`drawAngledText`
+  fail to draw into `ALPHA_BLENDING_FULL` on AMOLED" finding did **not** repro on SDK 9.1.0: the
+  probe rendered radial text into an alpha buffer fine, and the live cache uses an
+  `ALPHA_BLENDING_FULL` buffer (transparent background) that composites correctly. Likely stale
+  (older SDK) or a different path (palette+alpha, or `setStroke` blend).
+
+## Still true (don't retry)
+- **Palette buffers can't anti-alias** (and the full-colour→palette quantize-blit is rejected:
+  *"Bitmap Palette cannot be larger than the target palette"*). Irrelevant now — the pool removes
+  any reason to use palette buffers for this.
 
 ## Remaining levers (not yet done)
-- **Radial text (~28 ms):** the big one, still open. A single **`drawAngledText`/label** (cheap, native, tilted-straight, drops the curve) was implemented and **reverted — looked bad** as a replacement for the curved look. Straight `drawText` (~0.4 ms/label, loses the curve) remains an option if the curve is ever sacrificed. Char-by-char `drawAngledText` to fake the curve is *not* a reliable win (keeps per-glyph AA cost, loses batching).
-- **Sun ring (~5 ms):** converting to `drawLine` chords is the obvious win, but note gradient-arc chords were reverted for looks — the same faceting risk applies, so raise segment count if attempted.
+- **Radial text (~28 ms): DONE** via the pool-buffer cache above — no longer a per-frame cost.
+  (Aside: `drawAngledText` straight-tilted text was tried as a *visual* alternative and reverted —
+  it looked bad; unrelated to the caching win.)
+- **Sun ring (~5 ms):** still drawn live (`drawArc`), in `drawDayNightArc`, awake-only. It could
+  **ride the same cache** — it's static like the gradient arcs — but it sits in a different
+  function and render position (radius 0.38, over the central ring), so folding it in needs care
+  with layering. Not yet done.
 - **`clear` (~5.4 ms):** only avoidable via partial-update tricks (not feasible at 128 KB).
