@@ -84,11 +84,11 @@ class AnalogView extends WatchUi.WatchFace {
         // track the ring radius (no inner part/tail).
         var innerR = radius * (RING_R_FRAC + 0.06);
 
-        // Hour hand.
-        drawHand(dc, cx, cy, hourAngle, innerR, radius * 0.50, 9, ACCENT_COLOR);
+        // Hour hand: tapered amber baton ending in an open ring (skeleton) tip.
+        drawHourHand(dc, cx, cy, hourAngle, innerR, radius * 0.50, 9, ACCENT_COLOR);
 
-        // Minute hand.
-        drawHand(dc, cx, cy, minuteAngle, innerR, radius * 0.80, 7, ACCENT_COLOR);
+        // Minute hand: tapered amber lance converging to a sharp point.
+        drawMinuteHand(dc, cx, cy, minuteAngle, innerR, radius * 0.80, 7, ACCENT_COLOR);
 
         // Second hand: white with an accent-coloured tip (skipped in low power).
         if (!_isSleeping) {
@@ -376,8 +376,12 @@ class AnalogView extends WatchUi.WatchFace {
         }
         _vectorFontTried = true;
         if (Graphics has :getVectorFont) {
+            // Per-device face availability varies: MARQ2/fenix/FR965/epix ship
+            // RobotoCondensed*; venu3 only has Roboto-Regular. List several so a
+            // match is found on each target (null → radial fields are skipped).
             _vectorFont = Graphics.getVectorFont({
-                :face => ["RobotoCondensedBold", "RobotoCondensedRegular", "Swiss721Regular"],
+                :face => ["RobotoCondensedBold", "RobotoCondensedRegular", "RobotoCondensed",
+                    "Swiss721Bold", "Swiss721Regular", "RobotoRegular"],
                 :size => (dc.getFontHeight(Graphics.FONT_XTINY) * 1.15).toNumber()
             });
         }
@@ -450,9 +454,9 @@ class AnalogView extends WatchUi.WatchFace {
     private function drawGradientArcs(dc as Graphics.Dc) as Void {
         dc.setPenWidth(2);
         for (var n = 0; n < _gradArcs.size(); n++) {
-            var steps = _gradArcs[n];
+            var steps = _gradArcs[n] as Lang.Array;
             for (var k = 0; k < steps.size(); k++) {
-                var s = steps[k];
+                var s = steps[k] as Lang.Array;
                 dc.setColor(s[2], Graphics.COLOR_TRANSPARENT);
                 dc.drawArc(_gradCx, _gradCy, _gradR, Graphics.ARC_COUNTER_CLOCKWISE, s[0], s[1]);
             }
@@ -665,10 +669,24 @@ class AnalogView extends WatchUi.WatchFace {
         // Down: steps (nudged down toward the 6 o'clock edge).
         drawValue(dc, cx, cy + off + radius * 0.07, stepsText());
 
-        // Left: weather icon above the temperature (nudged a little further left).
-        var leftX = cx - off - radius * 0.08;
+        // Left: weather icon (top), a precip-chance bar, then the temperature.
+        var leftX = cx - off - radius * 0.05;
+        var cond = currentConditions();
         drawWeatherIcon(dc, leftX, cy - 16, 16);
+        // Thin precip-chance bar between the glyph and the temperature, only when
+        // it's high enough to be worth showing (interactive only).
+        if (!_isSleeping && cond != null && cond.precipitationChance != null
+                && cond.precipitationChance >= 20) {
+            drawPrecipBar(dc, leftX, cy + 3, radius * 0.18, cond.precipitationChance);
+        }
         drawValue(dc, leftX, cy + 22, temperatureText());
+
+        // Further left: wind barb (interactive only; skip light/calm wind < 4 m/s).
+        if (!_isSleeping && cond != null && cond.windSpeed != null && cond.windBearing != null
+                && cond.windSpeed >= 4.0) {
+            drawWindBarb(dc, leftX - radius * 0.22, cy - radius * 0.02, radius * 0.11,
+                cond.windSpeed, cond.windBearing);
+        }
 
         // Right: date above the time. The time sits at the same y as the
         // temperature on the left so the two bottom values line up.
@@ -684,6 +702,20 @@ class AnalogView extends WatchUi.WatchFace {
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(x, y, Graphics.FONT_TINY, value,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    //! Thin horizontal precip-chance bar (amber fill over a dark track) centred
+    //! at (x, y), total width w. chance is 0..100.
+    private function drawPrecipBar(dc as Graphics.Dc, x as Numeric, y as Numeric,
+            w as Float, chance as Number) as Void {
+        var x0 = x - w / 2.0;
+        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(x0, y, w, 2);
+        var fw = (w * chance / 100.0).toNumber();
+        if (fw > 0) {
+            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.fillRectangle(x0, y, fw, 2);
+        }
     }
 
     //! Draw the heart-rate value. The filled heart is drawn only in high power
@@ -820,7 +852,19 @@ class AnalogView extends WatchUi.WatchFace {
             return;
         }
 
-        // Cloud body shared by cloud / rain / snow.
+        if (category.equals("fog")) {
+            // Stacked horizontal lines with staggered ends (drifting fog/haze).
+            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.setPenWidth(2);
+            for (var i = 0; i < 4; i++) {
+                var ly = y - r * 0.55 + i * r * 0.36;
+                var inset = (i % 2 == 0) ? r * 0.22 : 0.0;
+                dc.drawLine(x - r * 0.85 + inset, ly, x + r * 0.85 - inset, ly);
+            }
+            return;
+        }
+
+        // Cloud body shared by cloud / rain / snow / storm.
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         var cloudY = (category.equals("cloud")) ? y : y - r * 0.4;
         dc.fillCircle(x - r * 0.55, cloudY, r * 0.45);
@@ -840,26 +884,135 @@ class AnalogView extends WatchUi.WatchFace {
             for (var i = -1; i <= 1; i++) {
                 dc.fillCircle(x + i * r * 0.5, cloudY + r * 0.85, 2);
             }
+        } else if (category.equals("storm")) {
+            // Lightning bolt below the cloud.
+            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.setPenWidth(3);
+            dc.drawLine(x + r * 0.13, cloudY + r * 0.40, x - r * 0.13, cloudY + r * 0.92);
+            dc.drawLine(x - r * 0.13, cloudY + r * 0.92, x + r * 0.07, cloudY + r * 0.92);
+            dc.drawLine(x + r * 0.07, cloudY + r * 0.92, x - r * 0.13, cloudY + r * 1.40);
         }
     }
 
-    //! Bucket a Weather condition code into clear / rain / snow / cloud.
+    //! Wind barb (meteorological): a staff pointing into the wind with feathers
+    //! encoding speed in knots -- half feather = 5 kt, full = 10 kt, pennant =
+    //! 50 kt. Capped at 60 kt (one pennant + one full). bearingDeg is the compass
+    //! direction the wind blows FROM (0 = N, clockwise). len is the staff length.
+    private function drawWindBarb(dc as Graphics.Dc, x as Numeric, y as Numeric,
+            len as Float, speedMps as Float, bearingDeg as Number) as Void {
+        var kt = speedMps * 1.94384;
+        var units = ((kt + 2.5) / 5.0).toNumber(); // count of 5-kt units (nearest 5)
+        if (units > 12) {
+            units = 12;                             // cap at 60 kt
+        }
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(1);
+        if (units <= 0) {
+            dc.drawCircle(x, y, 3);                 // calm
+            return;
+        }
+        var rad = Math.PI / 180.0;
+        var b = bearingDeg * rad;
+        var dx = Math.sin(b);                       // along the staff, toward the wind source
+        var dy = -Math.cos(b);
+        var hx = (len / 2.0) * dx;
+        var hy = (len / 2.0) * dy;
+        var fx = x + hx;                            // upwind end (feathers attach here)
+        var fy = y + hy;
+        dc.drawLine(x - hx, y - hy, fx, fy);
+
+        var full = len * 0.36;
+        var half = len * 0.20;
+        var step = len * 0.18;
+        var fAng = Math.atan2(dy, dx) + 105.0 * rad; // feathers slant back to one side
+        var fdx = Math.cos(fAng);
+        var fdy = Math.sin(fAng);
+
+        var pos = 0.0;                              // distance from the upwind end inward
+        if (units >= 10) {                          // one pennant (50 kt)
+            var px = fx - step * dx;
+            var py = fy - step * dy;
+            dc.fillPolygon([
+                [fx.toNumber(), fy.toNumber()],
+                [(fx + full * fdx).toNumber(), (fy + full * fdy).toNumber()],
+                [px.toNumber(), py.toNumber()]
+            ]);
+            pos = step * 1.6;
+            units -= 10;
+        }
+        for (var i = 0; i < units / 2; i++) {       // full feathers (10 kt)
+            var ax = fx - pos * dx;
+            var ay = fy - pos * dy;
+            dc.drawLine(ax, ay, ax + full * fdx, ay + full * fdy);
+            pos += step;
+        }
+        if (units % 2 > 0) {                         // a single half feather (5 kt)
+            if (pos == 0.0) {                       // sit it in from the tip if alone
+                pos = step;
+            }
+            var ax = fx - pos * dx;
+            var ay = fy - pos * dy;
+            dc.drawLine(ax, ay, ax + half * fdx, ay + half * fdy);
+        }
+    }
+
+    //! Bucket a Weather condition code into clear / rain / snow / storm / fog /
+    //! cloud. The "chance of" codes deliberately fall through to cloud -- the
+    //! precip bar carries the probability, so the glyph stays a plain cloud
+    //! rather than over-stating it as steady rain/snow.
     private function weatherCategory(condition as Number) as String {
         if (condition == Weather.CONDITION_CLEAR
-                || condition == Weather.CONDITION_PARTLY_CLOUDY
-                || condition == Weather.CONDITION_MOSTLY_CLEAR) {
+                || condition == Weather.CONDITION_MOSTLY_CLEAR
+                || condition == Weather.CONDITION_PARTLY_CLEAR
+                || condition == Weather.CONDITION_FAIR
+                || condition == Weather.CONDITION_PARTLY_CLOUDY) {
             return "clear";
         }
         if (condition == Weather.CONDITION_RAIN
                 || condition == Weather.CONDITION_LIGHT_RAIN
                 || condition == Weather.CONDITION_HEAVY_RAIN
-                || condition == Weather.CONDITION_SCATTERED_SHOWERS) {
+                || condition == Weather.CONDITION_SCATTERED_SHOWERS
+                || condition == Weather.CONDITION_SHOWERS
+                || condition == Weather.CONDITION_LIGHT_SHOWERS
+                || condition == Weather.CONDITION_HEAVY_SHOWERS
+                || condition == Weather.CONDITION_DRIZZLE
+                || condition == Weather.CONDITION_FREEZING_RAIN
+                || condition == Weather.CONDITION_UNKNOWN_PRECIPITATION) {
             return "rain";
         }
         if (condition == Weather.CONDITION_SNOW
                 || condition == Weather.CONDITION_LIGHT_SNOW
-                || condition == Weather.CONDITION_HEAVY_SNOW) {
+                || condition == Weather.CONDITION_HEAVY_SNOW
+                || condition == Weather.CONDITION_FLURRIES
+                || condition == Weather.CONDITION_SLEET
+                || condition == Weather.CONDITION_ICE
+                || condition == Weather.CONDITION_ICE_SNOW
+                || condition == Weather.CONDITION_WINTRY_MIX
+                || condition == Weather.CONDITION_RAIN_SNOW
+                || condition == Weather.CONDITION_LIGHT_RAIN_SNOW
+                || condition == Weather.CONDITION_HEAVY_RAIN_SNOW) {
             return "snow";
+        }
+        if (condition == Weather.CONDITION_THUNDERSTORMS
+                || condition == Weather.CONDITION_SCATTERED_THUNDERSTORMS
+                || condition == Weather.CONDITION_CHANCE_OF_THUNDERSTORMS
+                || condition == Weather.CONDITION_HAIL
+                || condition == Weather.CONDITION_SQUALL
+                || condition == Weather.CONDITION_TORNADO
+                || condition == Weather.CONDITION_HURRICANE
+                || condition == Weather.CONDITION_TROPICAL_STORM) {
+            return "storm";
+        }
+        if (condition == Weather.CONDITION_FOG
+                || condition == Weather.CONDITION_MIST
+                || condition == Weather.CONDITION_HAZE
+                || condition == Weather.CONDITION_HAZY
+                || condition == Weather.CONDITION_SMOKE
+                || condition == Weather.CONDITION_DUST
+                || condition == Weather.CONDITION_SAND
+                || condition == Weather.CONDITION_SANDSTORM
+                || condition == Weather.CONDITION_VOLCANIC_ASH) {
+            return "fog";
         }
         return "cloud";
     }
@@ -891,9 +1044,11 @@ class AnalogView extends WatchUi.WatchFace {
         drawHandCut(dc, cx, cy, angle, split, 3.0);
     }
 
-    //! Draw a single hand (with a thin black outline) from the center outward
-    //! at the given angle (radians, clockwise from 12 o'clock).
-    private function drawHand(dc as Graphics.Dc, cx as Number, cy as Number,
+    //! Hour hand: a tapered amber baton ending in an open ring ("skeleton" /
+    //! pomme) tip, so the longer minute hand sweeps visibly through it. The grey
+    //! under-pass (wider body, thicker ring) reads as a polished bevel.
+    //! Angle is radians, clockwise from 12 o'clock.
+    private function drawHourHand(dc as Graphics.Dc, cx as Number, cy as Number,
             angle as Float, innerR as Float, length as Float, penWidth as Number, color as Number) as Void {
         var sin = Math.sin(angle);
         var cos = Math.cos(angle);
@@ -902,32 +1057,75 @@ class AnalogView extends WatchUi.WatchFace {
         var px = cos;                      // perpendicular
         var py = sin;
         var hw = penWidth / 2.0;
-        var ox = cx + length * dx;         // outer tip (kept rounded)
-        var oy = cy + length * dy;
-        // Outline: flat-ended rectangle body + round outer cap.
+        var ringR = hw + 2.0;
+        var ringCtr = length - ringR;      // ring centre along the hand
+        var bodyEnd = length - 2.0 * ringR; // body meets the ring's inner edge
+        var rcx = cx + ringCtr * dx;
+        var rcy = cy + ringCtr * dy;
+        // Outline (grey bevel): tapered body + ring, one pixel proud.
         dc.setColor(0x808080, Graphics.COLOR_TRANSPARENT);
-        handRect(dc, cx, cy, dx, dy, px, py, innerR - 1.0, length, hw + 1.0);
-        dc.fillCircle(ox, oy, hw + 1.0);
-        // Fill.
+        handRect(dc, cx, cy, dx, dy, px, py, innerR - 1.0, bodyEnd, hw + 1.0, 3.5);
+        dc.setPenWidth(5);
+        dc.drawCircle(rcx, rcy, ringR);
+        // Fill: body tapers from full width down to the ring's stroke weight.
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-        handRect(dc, cx, cy, dx, dy, px, py, innerR, length, hw);
-        dc.fillCircle(ox, oy, hw);
+        handRect(dc, cx, cy, dx, dy, px, py, innerR, bodyEnd, hw, 2.5);
+        dc.setPenWidth(3);
+        dc.drawCircle(rcx, rcy, ringR);
     }
 
-    //! Fill a rectangle along a hand: from radius r0 to r1, half-width hw.
-    //! Points are integers so fillPolygon fills (floats render edges only).
+    //! Minute hand: a tapered amber lance that narrows to a sharp point, giving a
+    //! silhouette distinct from the hour hand's open ring. Grey under-pass bevel.
+    private function drawMinuteHand(dc as Graphics.Dc, cx as Number, cy as Number,
+            angle as Float, innerR as Float, length as Float, penWidth as Number, color as Number) as Void {
+        var sin = Math.sin(angle);
+        var cos = Math.cos(angle);
+        var dx = sin;
+        var dy = -cos;
+        var px = cos;
+        var py = sin;
+        var hw = penWidth / 2.0;
+        var shoulder = length * 0.90;      // parallel body up to here, then a short blunt point
+        dc.setColor(0x808080, Graphics.COLOR_TRANSPARENT);
+        lancePoly(dc, cx, cy, dx, dy, px, py, innerR - 1.0, shoulder, length + 1.5, hw + 1.0);
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        lancePoly(dc, cx, cy, dx, dy, px, py, innerR, shoulder, length, hw);
+    }
+
+    //! Fill a tapered quad along a hand: radius r0..r1 with half-width hw0 at the
+    //! inner end and hw1 at the outer end. Integer points so fillPolygon fills.
     private function handRect(dc as Graphics.Dc, cx as Number, cy as Number,
             dx as Float, dy as Float, px as Float, py as Float,
-            r0 as Float, r1 as Float, hw as Float) as Void {
+            r0 as Float, r1 as Float, hw0 as Float, hw1 as Float) as Void {
         var ax = cx + r0 * dx;
         var ay = cy + r0 * dy;
         var bx = cx + r1 * dx;
         var by = cy + r1 * dy;
         dc.fillPolygon([
-            [(ax + px * hw).toNumber(), (ay + py * hw).toNumber()],
-            [(bx + px * hw).toNumber(), (by + py * hw).toNumber()],
-            [(bx - px * hw).toNumber(), (by - py * hw).toNumber()],
-            [(ax - px * hw).toNumber(), (ay - py * hw).toNumber()]
+            [(ax + px * hw0).toNumber(), (ay + py * hw0).toNumber()],
+            [(bx + px * hw1).toNumber(), (by + py * hw1).toNumber()],
+            [(bx - px * hw1).toNumber(), (by - py * hw1).toNumber()],
+            [(ax - px * hw0).toNumber(), (ay - py * hw0).toNumber()]
+        ]);
+    }
+
+    //! Fill a 5-point lance: flat base (half-width hw) from r0 to the shoulder rs,
+    //! then converging to a point at the tip rt. Integer points for fillPolygon.
+    private function lancePoly(dc as Graphics.Dc, cx as Number, cy as Number,
+            dx as Float, dy as Float, px as Float, py as Float,
+            r0 as Float, rs as Float, rt as Float, hw as Float) as Void {
+        var a0x = cx + r0 * dx;
+        var a0y = cy + r0 * dy;
+        var sx = cx + rs * dx;
+        var sy = cy + rs * dy;
+        var tx = cx + rt * dx;
+        var ty = cy + rt * dy;
+        dc.fillPolygon([
+            [(a0x + px * hw).toNumber(), (a0y + py * hw).toNumber()],
+            [(sx + px * hw).toNumber(), (sy + py * hw).toNumber()],
+            [tx.toNumber(), ty.toNumber()],
+            [(sx - px * hw).toNumber(), (sy - py * hw).toNumber()],
+            [(a0x - px * hw).toNumber(), (a0y - py * hw).toNumber()]
         ]);
     }
 
