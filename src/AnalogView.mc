@@ -14,7 +14,7 @@ import Toybox.Weather;
 
 //! A simple analog watchface: quarter-hour ticks, hour/minute/second hands, a
 //! center hub, four cardinal data fields and four diagonal radial fields.
-//!   up = heart rate (in a heart)   down = steps
+//!   up = body/movement (complication)   down = body/movement (complication)
 //!   left = weather + temperature   right = time + date
 //!   NE = energy (complication)  SE = height (complication)  SW = timezone  NW = sunrise/sunset
 //!
@@ -37,14 +37,22 @@ class AnalogView extends WatchUi.WatchFace {
     private const TZ_OFFSET = [0.0, 0.0, 1.0, 3.5, 4.0, 5.5, 9.0, 10.0, -5.0, -8.0];
     private const TZ_LABEL = ["UTC", "LON", "STO", "TEH", "DXB", "IND", "TYO", "SYD", "NYC", "LAX"];
 
-    // Configurable complications: SE (height) = "data" slot 0, NE (energy) =
-    // slot 1. _seText/_neText are cached "LABEL value" strings refreshed by the
-    // change callback; empty -> the field falls back to its built-in readout.
-    private var _seCompId as Complications.Id or Null = null;
-    private var _neCompId as Complications.Id or Null = null;
-    private var _seText as String = "";
-    private var _neText as String = "";
+    // Configurable complication slots. The watch-face-config schema requires
+    // integer <complication id>s, so these name the slot indices (id N in
+    // watchface-config.xml == SLOT_* here). _compVal caches each raw value string
+    // (refreshed by the change callback); "" -> built-in fallback.
+    private const SLOT_SE = 0; // height
+    private const SLOT_NE = 1; // energy
+    private const SLOT_N = 2;  // body/movement (up)
+    private const SLOT_S = 3;  // body/movement (down)
+    private const SLOT_COUNT = 4;
+    private var _compId as Lang.Array = new [SLOT_COUNT];
+    private var _compVal as Lang.Array = ["", "", "", ""];
     private var _compCbRegistered as Boolean = false;
+    // Last-frame geometry, cached so the editor's tap hit-test can locate fields.
+    private var _cx as Number = 0;
+    private var _cy as Number = 0;
+    private var _radius as Number = 0;
 
     // Data colour for the cardinal (N/E/S/W) field readouts and weather glyphs.
     // Defaults to light gray; user-selectable via the editor's data-colour picker.
@@ -54,6 +62,7 @@ class AnalogView extends WatchUi.WatchFace {
 
     private var _isSleeping as Boolean = false;
     private var _vectorFont as Graphics.VectorFont or Null = null;
+    private var _labelFont as Graphics.VectorFont or Null = null; // tiny N/S field labels
     private var _vectorFontTried as Boolean = false;
     private var _moon as WatchUi.BitmapResource or Null = null;
     private var _moonBuf as Graphics.BufferedBitmapReference or Null = null;
@@ -86,6 +95,9 @@ class AnalogView extends WatchUi.WatchFace {
         var cx = width / 2;
         var cy = height / 2;
         var radius = (width < height ? width : height) / 2;
+        _cx = cx;
+        _cy = cy;
+        _radius = radius;
 
         // Clear background.
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
@@ -411,10 +423,16 @@ class AnalogView extends WatchUi.WatchFace {
             // Per-device face availability varies: MARQ2/fenix/FR965/epix ship
             // RobotoCondensed*; venu3 only has Roboto-Regular. List several so a
             // match is found on each target (null → radial fields are skipped).
+            var faces = ["RobotoCondensedBold", "RobotoCondensedRegular", "RobotoCondensed",
+                "Swiss721Bold", "Swiss721Regular", "RobotoRegular"];
             _vectorFont = Graphics.getVectorFont({
-                :face => ["RobotoCondensedBold", "RobotoCondensedRegular", "RobotoCondensed",
-                    "Swiss721Bold", "Swiss721Regular", "RobotoRegular"],
+                :face => faces,
                 :size => (dc.getFontHeight(Graphics.FONT_XTINY) * 1.15).toNumber()
+            });
+            // Much smaller scalable font for the N/S type labels.
+            _labelFont = Graphics.getVectorFont({
+                :face => faces,
+                :size => (dc.getFontHeight(Graphics.FONT_XTINY) * 0.6).toNumber()
             });
         }
     }
@@ -427,10 +445,12 @@ class AnalogView extends WatchUi.WatchFace {
             return;
         }
         _configTried = true;
-        // Defaults preserve the old fields: SE = floors, NE = intensity minutes.
+        // Defaults preserve the old fields: SE floors, NE intensity, N HR, S steps.
         if (Toybox has :Complications) {
-            _seCompId = new Complications.Id(Complications.COMPLICATION_TYPE_FLOORS_CLIMBED);
-            _neCompId = new Complications.Id(Complications.COMPLICATION_TYPE_INTENSITY_MINUTES);
+            _compId[SLOT_SE] = new Complications.Id(Complications.COMPLICATION_TYPE_FLOORS_CLIMBED);
+            _compId[SLOT_NE] = new Complications.Id(Complications.COMPLICATION_TYPE_INTENSITY_MINUTES);
+            _compId[SLOT_N] = new Complications.Id(Complications.COMPLICATION_TYPE_HEART_RATE);
+            _compId[SLOT_S] = new Complications.Id(Complications.COMPLICATION_TYPE_STEPS);
         }
         if (Application has :WatchFaceConfig) {
             var settings = Application.WatchFaceConfig.getSettings(null);
@@ -450,12 +470,9 @@ class AnalogView extends WatchUi.WatchFace {
                 if (cs != null) {
                     for (var i = 0; i < cs.size(); i++) {
                         var cid = cs[i].complicationId;
-                        if (cid != null) {
-                            if (cs[i].uniqueIdentifier == 0) {
-                                _seCompId = cid;
-                            } else if (cs[i].uniqueIdentifier == 1) {
-                                _neCompId = cid;
-                            }
+                        var uid = cs[i].uniqueIdentifier;
+                        if (cid != null && uid != null && uid >= 0 && uid < SLOT_COUNT) {
+                            _compId[uid] = cid;
                         }
                     }
                 }
@@ -464,7 +481,7 @@ class AnalogView extends WatchUi.WatchFace {
         subscribeComps();
     }
 
-    //! Subscribe to the configured complications and seed their values. The
+    //! Subscribe to all configured complications and seed their values. The
     //! change callback keeps them fresh; the registration is done once.
     private function subscribeComps() as Void {
         if (!(Toybox has :Complications)) {
@@ -474,18 +491,16 @@ class AnalogView extends WatchUi.WatchFace {
             Complications.registerComplicationChangeCallback(method(:onComplicationChange));
             _compCbRegistered = true;
         }
-        if (_seCompId != null) {
-            Complications.subscribeToUpdates(_seCompId);
+        for (var i = 0; i < SLOT_COUNT; i++) {
+            if (_compId[i] != null) {
+                Complications.subscribeToUpdates(_compId[i]);
+                _compVal[i] = compValue(_compId[i]);
+            }
         }
-        if (_neCompId != null) {
-            Complications.subscribeToUpdates(_neCompId);
-        }
-        _seText = compText(_seCompId);
-        _neText = compText(_neCompId);
     }
 
-    //! Read a complication's current value as a "LABEL value" string ("" if none).
-    private function compText(id as Complications.Id or Null) as String {
+    //! A complication's current value as a bare string ("" if unavailable).
+    private function compValue(id as Complications.Id or Null) as String {
         if (!(Toybox has :Complications) || id == null) {
             return "";
         }
@@ -493,34 +508,79 @@ class AnalogView extends WatchUi.WatchFace {
             var c = Complications.getComplication(id);
             if (c != null && c.value != null) {
                 var v = c.value;
-                var vs = (v instanceof Lang.Float || v instanceof Lang.Double) ? v.format("%d") : v.toString();
-                return compLabel(id.getType()) + " " + vs;
+                return (v instanceof Lang.Float || v instanceof Lang.Double) ? v.format("%d") : v.toString();
             }
         } catch (ex) {
         }
         return "";
     }
 
-    //! Short field label for a configurable complication type (height + energy).
+    //! Display value for a slot: the complication value, or a built-in fallback
+    //! for the well-known types (HR/steps/intensity/floors), else "--".
+    private function slotValue(slot as Number) as String {
+        var v = _compVal[slot] as String;
+        if (v.length() > 0) {
+            return v;
+        }
+        var id = _compId[slot];
+        var t = (id != null) ? id.getType() : null;
+        if (t == Complications.COMPLICATION_TYPE_HEART_RATE) { return heartRateText(); }
+        if (t == Complications.COMPLICATION_TYPE_STEPS) { return stepsText(); }
+        if (t == Complications.COMPLICATION_TYPE_INTENSITY_MINUTES) { return intensityMinutesText(); }
+        if (t == Complications.COMPLICATION_TYPE_FLOORS_CLIMBED) { return floorsText(); }
+        return "--";
+    }
+
+    //! Short field label for a configurable complication type.
     private function compLabel(type as Complications.Type) as String {
-        if (type == Complications.COMPLICATION_TYPE_ALTITUDE) { return "ALT"; }
-        if (type == Complications.COMPLICATION_TYPE_SEA_LEVEL_PRESSURE) { return "BAR"; }
+        if (type == Complications.COMPLICATION_TYPE_HEART_RATE) { return "HR"; }
+        if (type == Complications.COMPLICATION_TYPE_STEPS) { return "STP"; }
         if (type == Complications.COMPLICATION_TYPE_CALORIES) { return "CAL"; }
         if (type == Complications.COMPLICATION_TYPE_BODY_BATTERY) { return "BB"; }
+        if (type == Complications.COMPLICATION_TYPE_STRESS) { return "STR"; }
+        if (type == Complications.COMPLICATION_TYPE_PULSE_OX) { return "OX"; }
+        if (type == Complications.COMPLICATION_TYPE_RESPIRATION_RATE) { return "RSP"; }
         if (type == Complications.COMPLICATION_TYPE_INTENSITY_MINUTES) { return "IM"; }
-        return "FL"; // floors
+        if (type == Complications.COMPLICATION_TYPE_FLOORS_CLIMBED) { return "FL"; }
+        if (type == Complications.COMPLICATION_TYPE_WEEKLY_RUN_DISTANCE) { return "RUN"; }
+        if (type == Complications.COMPLICATION_TYPE_WEEKLY_BIKE_DISTANCE) { return "BIK"; }
+        if (type == Complications.COMPLICATION_TYPE_ALTITUDE) { return "ALT"; }
+        if (type == Complications.COMPLICATION_TYPE_SEA_LEVEL_PRESSURE) { return "BAR"; }
+        return "?";
+    }
+
+    //! Lowercase label for the small N/S field adornment (body/movement types).
+    private function cardinalLabel(type as Complications.Type) as String {
+        if (type == Complications.COMPLICATION_TYPE_STEPS) { return "steps"; }
+        if (type == Complications.COMPLICATION_TYPE_CALORIES) { return "cal"; }
+        if (type == Complications.COMPLICATION_TYPE_BODY_BATTERY) { return "body"; }
+        if (type == Complications.COMPLICATION_TYPE_STRESS) { return "stress"; }
+        if (type == Complications.COMPLICATION_TYPE_PULSE_OX) { return "spo2"; }
+        if (type == Complications.COMPLICATION_TYPE_RESPIRATION_RATE) { return "resp"; }
+        if (type == Complications.COMPLICATION_TYPE_INTENSITY_MINUTES) { return "int"; }
+        if (type == Complications.COMPLICATION_TYPE_FLOORS_CLIMBED) { return "floors"; }
+        if (type == Complications.COMPLICATION_TYPE_WEEKLY_RUN_DISTANCE) { return "run"; }
+        if (type == Complications.COMPLICATION_TYPE_WEEKLY_BIKE_DISTANCE) { return "bike"; }
+        return "";
+    }
+
+    //! Inline "LABEL value" text for the diagonal (NE/SE) radial fields.
+    private function compInline(slot as Number, fallback as String) as String {
+        var id = _compId[slot];
+        if (id == null) {
+            return fallback;
+        }
+        return compLabel(id.getType()) + " " + slotValue(slot);
     }
 
     //! Complication-changed callback (system push) -> refresh + redraw.
     function onComplicationChange(id as Complications.Id) as Void {
         var hit = false;
-        if (_seCompId != null && id.equals(_seCompId)) {
-            _seText = compText(_seCompId);
-            hit = true;
-        }
-        if (_neCompId != null && id.equals(_neCompId)) {
-            _neText = compText(_neCompId);
-            hit = true;
+        for (var i = 0; i < SLOT_COUNT; i++) {
+            if (_compId[i] != null && id.equals(_compId[i])) {
+                _compVal[i] = compValue(_compId[i]);
+                hit = true;
+            }
         }
         if (hit) {
             WatchUi.requestUpdate();
@@ -546,16 +606,43 @@ class AnalogView extends WatchUi.WatchFace {
         WatchUi.requestUpdate();
     }
 
-    //! Set a complication slot (0 = SE, 1 = NE) from a live editor edit:
+    //! Hit-test an editor tap against the four complication fields; returns the
+    //! slot's id (== uniqueIdentifier) for setSelectedComplication, or null.
+    function getTappedComplication(x as Number, y as Number) as Number or Null {
+        var r = _radius;
+        if (r <= 0) {
+            return null;
+        }
+        // [slot, centreX, centreY] for N, S, NE, SE.
+        var fields = [
+            [SLOT_N, _cx, _cy - r * 0.58],
+            [SLOT_S, _cx, _cy + r * 0.60],
+            [SLOT_NE, _cx + r * 0.58, _cy - r * 0.58],
+            [SLOT_SE, _cx + r * 0.58, _cy + r * 0.58]
+        ];
+        var best = null;
+        var bestD = r * 0.22; // tap tolerance
+        for (var i = 0; i < fields.size(); i++) {
+            var f = fields[i] as Lang.Array;
+            var dx = x - (f[1] as Number);
+            var dy = y - (f[2] as Number);
+            var d = Math.sqrt(dx * dx + dy * dy);
+            if (d < bestD) {
+                bestD = d;
+                best = f[0] as Number;
+            }
+        }
+        return best;
+    }
+
+    //! Set a complication slot (0 SE, 1 NE, 2 N, 3 S) from a live editor edit:
     //! re-subscribe + redraw.
     function setComplication(slot as Number, id as Complications.Id) as Void {
-        if (slot == 0) {
-            _seCompId = id;
-        } else if (slot == 1) {
-            _neCompId = id;
+        if (slot >= 0 && slot < SLOT_COUNT) {
+            _compId[slot] = id;
+            subscribeComps();
+            WatchUi.requestUpdate();
         }
-        subscribeComps();
-        WatchUi.requestUpdate();
     }
 
     //! Draw the four diagonal data fields (curved radial text), blitting a cached
@@ -564,12 +651,11 @@ class AnalogView extends WatchUi.WatchFace {
         if (!(dc has :drawRadialText) || _vectorFont == null) {
             return;
         }
-        // NE: the configured energy complication, or intensity minutes fallback.
-        var imText = (_neText.length() > 0) ? _neText : ("IM " + intensityMinutesText());
+        // NE energy (slot 1) and SE height (slot 0) complications, inline.
+        var imText = compInline(SLOT_NE, "IM " + intensityMinutesText());
         var sun = sunText();
         var utc = swFieldText();
-        // SE: the configured height complication, or floors as a fallback.
-        var fl = (_seText.length() > 0) ? _seText : ("FL " + floorsText());
+        var fl = compInline(SLOT_SE, "FL " + floorsText());
         // Sleep state is part of the key: the gradient arcs are baked in only when
         // awake, so an enter/exit-sleep transition forces a rebuild.
         var key = imText + "|" + sun + "|" + utc + "|" + fl + (_isSleeping ? "|s" : "|w");
@@ -882,11 +968,11 @@ class AnalogView extends WatchUi.WatchFace {
     private function drawDataFields(dc as Graphics.Dc, cx as Number, cy as Number, radius as Number) as Void {
         var off = radius * 0.58;
 
-        // Up: heart rate (small heart icon above the value).
-        drawHeartRate(dc, cx, cy - off);
+        // Up (N, slot 2): body/movement complication, adornment above.
+        drawCardinalComp(dc, cx, cy - off, SLOT_N, true);
 
-        // Down: steps (nudged down toward the 6 o'clock edge).
-        drawValue(dc, cx, cy + off + radius * 0.07, stepsText());
+        // Down (S, slot 3): body/movement complication, adornment below.
+        drawCardinalComp(dc, cx, cy + off + radius * 0.02, SLOT_S, false);
 
         // Left: weather icon (top), a precip-chance bar, then the temperature.
         var leftX = cx - off - radius * 0.05;
@@ -937,20 +1023,35 @@ class AnalogView extends WatchUi.WatchFace {
         }
     }
 
-    //! Draw the heart-rate value. The filled heart is drawn only in high power
-    //! (it is the largest bright area, so it is dropped entirely in always-on);
-    //! the value itself is always shown.
-    private function drawHeartRate(dc as Graphics.Dc, x as Numeric, y as Numeric) as Void {
-        var iconH = dc.getFontHeight(Graphics.FONT_XTINY) * 0.65;
+    //! Draw a cardinal (N/S) complication: the value in data colour, with a small
+    //! adornment above (N) or below (S) -- the heart icon for heart rate (dropped
+    //! in always-on, like before), otherwise a tiny-font type label.
+    private function drawCardinalComp(dc as Graphics.Dc, x as Numeric, y as Numeric,
+            slot as Number, isNorth as Boolean) as Void {
         var textH = dc.getFontHeight(Graphics.FONT_TINY);
-        // Small heart icon above the value (skipped in always-on).
-        if (!_isSleeping) {
-            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            drawHeart(dc, x, y - textH * 1.0, iconH / 0.6875);
-        }
+        var id = _compId[slot];
+        var t = (id != null) ? id.getType() : null;
+
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, y - textH * 0.05, Graphics.FONT_TINY, heartRateText(),
+        dc.drawText(x, y, Graphics.FONT_TINY, slotValue(slot),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        if (t == Complications.COMPLICATION_TYPE_HEART_RATE) {
+            if (!_isSleeping) {
+                dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+                var iconH = dc.getFontHeight(Graphics.FONT_XTINY) * 0.65;
+                drawHeart(dc, x, isNorth ? (y - textH) : (y + textH), iconH / 0.6875);
+            }
+        } else if (t != null) {
+            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+            var ly = isNorth ? (y - textH * 0.7) : (y + textH * 0.7);
+            var just = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+            if (_labelFont != null) {
+                dc.drawText(x, ly, _labelFont, cardinalLabel(t), just);
+            } else {
+                dc.drawText(x, ly, Graphics.FONT_XTINY, cardinalLabel(t), just);
+            }
+        }
     }
 
     //! Fill a heart of the given width centered at (cx, cy) using the classic

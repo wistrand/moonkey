@@ -42,4 +42,22 @@ class AnalogWatchFaceDelegate extends WatchUi.WatchFaceDelegate {
             }
         }
     }
+
+    //! Editor tap: select the complication at the tapped field, so the user picks
+    //! one by tapping its place on the face rather than by numeric id.
+    function onTap(clickEvent as WatchUi.ClickEvent) as Lang.Boolean {
+        var c = clickEvent.getCoordinates();
+        var slot = _view.getTappedComplication(c[0], c[1]);
+        if (slot != null) {
+            setSelectedComplication(slot);
+            return true;
+        }
+        return false;
+    }
+
+    //! We draw fields ourselves (no layout drawables), so no editor preview
+    //! drawable -- tap selection above is what matters.
+    function getComplicationDrawable(complication) {
+        return null;
+    }
 }

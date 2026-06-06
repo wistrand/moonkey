@@ -31,6 +31,33 @@
                 <type>Complications.COMPLICATION_TYPE_CALORIES</type>
                 <type>Complications.COMPLICATION_TYPE_BODY_BATTERY</type>
             </complication>
+            <!-- N (slot 2) and S (slot 3): any body/speed/movement type. -->
+            <complication id="2">
+                <type default="true">Complications.COMPLICATION_TYPE_HEART_RATE</type>
+                <type>Complications.COMPLICATION_TYPE_STEPS</type>
+                <type>Complications.COMPLICATION_TYPE_CALORIES</type>
+                <type>Complications.COMPLICATION_TYPE_BODY_BATTERY</type>
+                <type>Complications.COMPLICATION_TYPE_STRESS</type>
+                <type>Complications.COMPLICATION_TYPE_PULSE_OX</type>
+                <type>Complications.COMPLICATION_TYPE_RESPIRATION_RATE</type>
+                <type>Complications.COMPLICATION_TYPE_INTENSITY_MINUTES</type>
+                <type>Complications.COMPLICATION_TYPE_FLOORS_CLIMBED</type>
+                <type>Complications.COMPLICATION_TYPE_WEEKLY_RUN_DISTANCE</type>
+                <type>Complications.COMPLICATION_TYPE_WEEKLY_BIKE_DISTANCE</type>
+            </complication>
+            <complication id="3">
+                <type default="true">Complications.COMPLICATION_TYPE_STEPS</type>
+                <type>Complications.COMPLICATION_TYPE_HEART_RATE</type>
+                <type>Complications.COMPLICATION_TYPE_CALORIES</type>
+                <type>Complications.COMPLICATION_TYPE_BODY_BATTERY</type>
+                <type>Complications.COMPLICATION_TYPE_STRESS</type>
+                <type>Complications.COMPLICATION_TYPE_PULSE_OX</type>
+                <type>Complications.COMPLICATION_TYPE_RESPIRATION_RATE</type>
+                <type>Complications.COMPLICATION_TYPE_INTENSITY_MINUTES</type>
+                <type>Complications.COMPLICATION_TYPE_FLOORS_CLIMBED</type>
+                <type>Complications.COMPLICATION_TYPE_WEEKLY_RUN_DISTANCE</type>
+                <type>Complications.COMPLICATION_TYPE_WEEKLY_BIKE_DISTANCE</type>
+            </complication>
         </data>
     </watchface-config>
 </resources>
