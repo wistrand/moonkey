@@ -2,3 +2,6 @@ bin/
 node_modules/
 tmp/
 .claude/
+
+# JetBrains IDE
+.idea/
