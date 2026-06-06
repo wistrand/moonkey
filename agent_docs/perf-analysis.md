@@ -5,6 +5,14 @@ re-rendered every `onUpdate` (the second hand forces a full redraw; a full-scree
 ≈412 KB @16 bpp won't fit). So per-frame cost is what matters, and the sim hides it (fast
 CPU, no per-update execution budget, ~no memory limit).
 
+**128 KB is a fixed app-*type* policy, not a per-device figure** — verified across every
+target (marq2aviator, marq2, fenix843mm/847mm, venu3, epix2pro47mm, fr965): all report
+`watchFace = 131072` in their `compiler.json`, while the *same* hardware allows 768 KB for a
+`watchApp`, 256–512 KB for datafields/audio. So newer/flagship targets buy **no** extra
+watch-face memory; the cap never moves. The only door to >128 KB is shipping a watch *app*
+(768 KB) instead of a face — a different product (not always-on, different lifecycle), so not
+an option here. The radial-text caching dead-end below therefore stands on all targets.
+
 ## Profiler snapshot (6 full-draw frames captured)
 Profiler **Call Count is cumulative over all captured frames**; divide by 6 for per-frame.
 Use **Actual Time** (self/exclusive), not Total.
