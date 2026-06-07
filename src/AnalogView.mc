@@ -304,19 +304,9 @@ class AnalogView extends WatchUi.WatchFace {
     //! the parallactic angle, so the terminator tilts as seen from the wearer's
     //! location. Reasonable (~few-degree) precision. 0 when no location.
     private function moonTilt() as Float {
-        // Observer location for the parallactic angle: prefer the GPS fix (the
-        // sim's position control and the device's real position), fall back to
-        // the weather observation point.
-        var loc = null;
-        if (Toybox has :Position) {
-            var pinfo = Position.getInfo();
-            if (pinfo != null && pinfo.position != null) {
-                loc = pinfo.position;
-            }
-        }
-        if (loc == null) {
-            loc = sunLocation();
-        }
+        // Observer location (GPS first, weather fallback) for the parallactic
+        // angle; null when there's no valid fix.
+        var loc = observerLoc();
         if (loc == null) {
             return 0.0;
         }
@@ -430,16 +420,7 @@ class AnalogView extends WatchUi.WatchFace {
     //! (RA/Dec re-evaluated at the transit and each crossing), ~few min. state:
     //! 0 normal, 1 up-all-day, 2 down-all-day, 3 no location.
     private function moonRiseSet() as Lang.Array {
-        var loc = null;
-        if (Toybox has :Position) {
-            var pinfo = Position.getInfo();
-            if (pinfo != null && pinfo.position != null) {
-                loc = pinfo.position;
-            }
-        }
-        if (loc == null) {
-            loc = sunLocation();
-        }
+        var loc = observerLoc();
         if (loc == null) {
             return [0.0, 0.0, 3];
         }
@@ -1171,6 +1152,19 @@ class AnalogView extends WatchUi.WatchFace {
         if (_southernKnown) {
             return _southern;
         }
+        var loc = observerLoc();
+        if (loc != null) {
+            _southern = (loc.toRadians()[0] as Float) < 0.0;
+            _southernKnown = true;
+        }
+        return _southern;
+    }
+
+    //! Observer location for astronomy: GPS fix first, weather observation point
+    //! fallback. Rejects an out-of-range latitude (the simulator defaults to
+    //! lat/lon = 180 deg after a restart) so a bad fix degrades to "no location"
+    //! -- a neutral moon -- instead of producing nonsense tilt/rise/set.
+    private function observerLoc() as Position.Location or Null {
         var loc = null;
         if (Toybox has :Position) {
             var pinfo = Position.getInfo();
@@ -1182,10 +1176,12 @@ class AnalogView extends WatchUi.WatchFace {
             loc = sunLocation();
         }
         if (loc != null) {
-            _southern = (loc.toRadians()[0] as Float) < 0.0;
-            _southernKnown = true;
+            var latR = loc.toRadians()[0] as Float;
+            if (latR > 1.58 || latR < -1.58) { // |lat| > ~90.5 deg = invalid
+                loc = null;
+            }
         }
-        return _southern;
+        return loc;
     }
 
     //! Location for sun calculations: prefer the cached weather observation
@@ -1428,12 +1424,17 @@ class AnalogView extends WatchUi.WatchFace {
         // N/S carry a label beside the value (not the heart icon) for non-HR types;
         // nudge the field outward a touch (N up, S down) so the label clears the ring.
         var vy = y;
+        var vvy = 0.0;
         if (t != null && t != Complications.COMPLICATION_TYPE_HEART_RATE) {
-            vy += isNorth ? -textH * 2.0 : textH * 0.55;
+            vy += isNorth ? -textH * .50 : textH * 0.55;
+            vvy = isNorth ?  -textH * 0.15 : textH * 0.10;
+        } else if (t != null && t == Complications.COMPLICATION_TYPE_HEART_RATE) {
+            vy += isNorth ? -textH * .15 : 0.0;
+            vvy = isNorth ? textH * 0.10 : 0.0;
         }
 
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, vy, Graphics.FONT_TINY, slotValue(slot),
+        dc.drawText(x, vy-vvy, Graphics.FONT_TINY, slotValue(slot),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         if (t == Complications.COMPLICATION_TYPE_HEART_RATE) {
