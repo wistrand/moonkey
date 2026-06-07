@@ -4,7 +4,9 @@ Analog Connect IQ watchface for AMOLED Garmin devices (MARQ 2 / fenix 8). Monkey
 
 ## Layout
 - `MoonkeyApp.mc` — `AppBase`; returns the view.
-- `AnalogView.mc` — `WatchFace`; all drawing and computation.
+- `AnalogView.mc` — `WatchFace`; all drawing, layout, and config.
+- `Astro.mc` (`module Astro`) — pure astronomy: moon (Meeus ch.47) + sun (Schlyter) ephemeris, bright-limb tilt, iterated moonrise/set. No device state — the view supplies location/time. Verified against `solunar`.
+- `CalendarMath.mc` (`module Cal`) — pure Gregorian-date + DST math for the timezone field.
 - `resources/` — strings (app name), launcher icon, moon photo.
 - `moonkey.jungle` points sources at `src/`. `manifest.xml` lists the target devices and the Positioning permission.
 
@@ -33,7 +35,7 @@ The moon is the most involved element:
 Why baking: alpha-blended *fills* require `setStroke`/`setFill` (not `setColor`), a rotated terminator can't use axis-aligned scanlines, and palette buffers can't anti-alias — so the shading is baked upright in a full-colour scratch, the disc is rotated into the display buffer, and only the cheap blit happens per frame. The moon source photo has a slightly darkened limb so its bright rim doesn't survive on the shadowed side.
 
 ## Location & data sources
-- **Moon inclination + moonrise/set** use `observerLoc()` = the observer's GPS (`Position`) first, weather observation point as fallback — so they track the real location and the sim's position control. Computed at the hourly bake (not per frame). `observerLoc` **rejects an out-of-range latitude** (`|lat| > ~90.5°`) and returns null (→ neutral moon, no arc): the simulator defaults the position to lat/lon = 180° after a restart, and without the guard that garbage produced nonsense tilt/rise-set. (A real watch always reports valid coordinates.)
+- **Moon inclination + moonrise/set** use `observerLoc()` = the observer's GPS (`Position`) first, weather observation point as fallback — so they track the real location and the sim's position control. Computed at the hourly bake (not per frame). `observerLoc` **rejects an out-of-range latitude** (`|lat| > ~90.5°`) and returns null: with no location `moonTilt()` returns null and the bake draws the **upright phase** (no inclination, terminator vertical), and the rise/set arc is dropped. The simulator defaults the position to lat/lon = 180° after a restart, and without the guard that garbage produced nonsense tilt/rise-set. (A real watch always reports valid coordinates.)
 - **Sun times** (day/night arc + sunrise/sunset field) use `sunLocation()`, which prefers the **weather observation location** (GPS fallback). This is correct on-device, but in the **simulator** the arc's angle/width can diverge if the simulated weather location isn't your real location — the device is authoritative.
 - Sun times and weather (condition, temperature, **`precipitationChance`**, **`windSpeed`/`windBearing`**) from the `Weather` API; the configurable field values from the **`Complications`** API (a change-callback caches them), with live `Activity`/`ActivityMonitor` fallbacks for HR/steps/intensity/floors. There is no moon/astronomy API, so phase, position, inclination, and rise/set are computed in-code (verified against `/usr/bin/solunar`).
 - Local-hour mapping (day/night arc, SW timezone field) converts moments via `Gregorian.utcInfo` with an explicit offset; the day/night arc uses the device clock timezone, so a sim timezone that differs from the device shifts the arc position (not its width).
