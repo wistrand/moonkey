@@ -13,6 +13,7 @@ MONKEYC  := $(SDK_BIN)/monkeyc
 MONKEYDO := $(SDK_BIN)/monkeydo
 SIM      := $(SDK_BIN)/simulator
 JUNGLE   := moonkey.jungle
+DEV_JUNGLE := moonkey-dev.jungle
 BIN      := bin
 SRC      := $(wildcard src/*.mc) manifest.xml $(JUNGLE) $(wildcard resources/*/*)
 PRGS     := $(addprefix $(BIN)/moonkey-,$(addsuffix .prg,$(DEVICES)))
@@ -22,7 +23,7 @@ MOON_RAW  := data/moon-raw.jpg
 MOON_PNG  := resources/drawables/moon.png
 MOON_CROP := 1600x1600+739+1243
 
-.PHONY: all build run sim sim-restart install package clean moon help
+.PHONY: all build run sim sim-restart install uninstall package clean moon help
 .DEFAULT_GOAL := help
 
 help: ## Show this help
@@ -51,8 +52,13 @@ run: build sim ## Build DEVICE and load it into the simulator (returns; logs to 
 	@setsid $(MONKEYDO) $(BIN)/moonkey-$(DEVICE).prg $(DEVICE) >/tmp/monkeydo.log 2>&1 < /dev/null & \
 	  echo "loaded $(DEVICE) into simulator (logs: /tmp/monkeydo.log)"
 
-install: build ## Sideload DEVICE to a connected watch over USB
-	./install.sh $(DEVICE)
+install: ## Build + sideload the DEV variant (separate app id + "Moonkey Dev"; coexists with the store/beta build)
+	@mkdir -p $(BIN)
+	$(MONKEYC) -d $(DEVICE) -f $(DEV_JUNGLE) -o $(BIN)/moonkey-dev-$(DEVICE).prg -y $(KEY) -w
+	./install.sh $(DEVICE) $(BIN)/moonkey-dev-$(DEVICE).prg
+
+uninstall: ## Remove sideloaded Moonkey from a connected watch (./uninstall.sh DEVICE to narrow)
+	./uninstall.sh
 
 package: ## Build a multi-device .iq for store submission
 	@mkdir -p $(BIN)

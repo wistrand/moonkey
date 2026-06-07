@@ -1,0 +1,7 @@
+# Dev sideload build: identical sources/resources as moonkey.jungle, but uses
+# manifest-dev.xml (separate app id + "Moonkey Dev" name) so the sideloaded dev
+# copy coexists on the watch with the store/beta build. Used by `make install`.
+project.manifest = manifest-dev.xml
+
+base.sourcePath = src
+base.resourcePath = resources

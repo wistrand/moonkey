@@ -1429,7 +1429,7 @@ class AnalogView extends WatchUi.WatchFace {
         // nudge the field outward a touch (N up, S down) so the label clears the ring.
         var vy = y;
         if (t != null && t != Complications.COMPLICATION_TYPE_HEART_RATE) {
-            vy += isNorth ? -textH * 0.55 : textH * 0.55;
+            vy += isNorth ? -textH * 2.0 : textH * 0.55;
         }
 
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);

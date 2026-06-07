@@ -46,7 +46,8 @@ Manager). With the toolchain set up (`setup-connectiq.sh`):
 make run                      # build + load the default device into the simulator
 make run DEVICE=fenix847mm    # ...a specific device (use sim-restart to switch a running sim)
 make all                      # build a .prg for every target
-make install DEVICE=marq2     # sideload to a connected watch over USB
+make install DEVICE=marq2     # sideload the "Moonkey Dev" variant (separate app id; coexists with a store/beta install)
+make uninstall                # remove sideloaded Moonkey from the watch (all builds)
 make moon                     # regenerate the Moon bitmap from data/moon-raw.jpg
 ```
 

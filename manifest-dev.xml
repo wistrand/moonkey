@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DEV sideload variant: a SEPARATE app id + name so it coexists on the watch
+     with the store/beta build (manifest.xml). Never upload this one to the store;
+     the production id in manifest.xml is the permanent Store identity. -->
+<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
+    <iq:application entry="MoonkeyApp" id="6ca23839dbb243279c8d7b4d3fe9b35b" launcherIcon="@Drawables.LauncherIcon" minApiLevel="4.2.1" name="@Strings.AppNameDev" type="watchface">
+        <iq:products>
+            <iq:product id="marq2aviator"/>
+            <iq:product id="fenix843mm"/>
+            <iq:product id="fenix847mm"/>
+            <iq:product id="marq2"/>
+            <iq:product id="venu3"/>
+            <iq:product id="epix2pro47mm"/>
+            <iq:product id="fr965"/>
+        </iq:products>
+        <iq:permissions>
+            <iq:uses-permission id="Positioning"/>
+            <iq:uses-permission id="ComplicationSubscriber"/>
+        </iq:permissions>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+    </iq:application>
+</iq:manifest>

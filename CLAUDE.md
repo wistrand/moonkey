@@ -6,10 +6,11 @@ Garmin Connect IQ watchface ("Moonkey") in Monkey C. Targets AMOLED: `marq2aviat
 
 ## Layout
 - `manifest.xml`, `moonkey.jungle` at root. **Sources live in `src/`** (not the default `source/`); the jungle sets `base.sourcePath = src`.
+- **Dev vs store identity:** `manifest.xml` holds the **production app id** (`a3f1c2d4…`, the permanent Store identity — freeze it, never regenerate, sign with the same key). `manifest-dev.xml` + `moonkey-dev.jungle` are a **dev sideload variant** with a *different* id (`6ca23839…`) and name (`Moonkey Dev`, `@Strings.AppNameDev`), so a sideloaded dev copy coexists on the watch with the store/beta build (Garmin keys app identity on the id, not the name). **`make install` builds+sideloads the dev variant** (`bin/moonkey-dev-<dev>.prg`); **`make package` uses the production manifest** for the `.iq`. Never upload `manifest-dev.xml` to the store.
 - `src/MoonkeyApp.mc` — `AppBase`, returns the view.
 - `src/AnalogView.mc` — all the drawing (`WatchFace`).
 - `resources/` — strings + launcher icon + moon photo. `bin/` — built `.prg`s (one per device). `agent_docs/` — design + research notes.
-- `setup-connectiq.sh` — one-time toolchain setup. `install.sh [device]` — sideload to a watch over MTP. `Makefile` — `make run`/`all`/`install`/`moon` (regenerates the moon bitmap from `data/moon-raw.jpg`).
+- `setup-connectiq.sh` — one-time toolchain setup. `install.sh [device]` — sideload to a watch over MTP; `uninstall.sh [device|all]` — remove the sideloaded `.prg`(s) over MTP (the inverse; default removes all `moonkey-*.prg`). `Makefile` — `make run`/`all`/`install`/`uninstall`/`package`/`moon` (regenerates the moon bitmap from `data/moon-raw.jpg`).
 
 ## Build & run
 SDK is managed by `~/go/bin/connect-iq-sdk-manager-cli` (open-source replacement for the GUI SDK Manager). Dev key: `~/.connectiq/developer_key.der`.

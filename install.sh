@@ -6,10 +6,14 @@
 # .prg first if it isn't already present in ./bin.
 #
 # Usage:
-#   ./install.sh [DEVICE]
+#   ./install.sh [DEVICE] [PRG]
 # Examples:
-#   ./install.sh                 # marq2aviator (default)
+#   ./install.sh                 # marq2aviator (default; builds bin/moonkey-<dev>.prg)
 #   ./install.sh fenix847mm
+#   ./install.sh marq2 bin/moonkey-dev-marq2.prg   # sideload a specific .prg (e.g. the dev build)
+#
+# With an explicit PRG (arg 2) the file must already exist; without it the
+# default production .prg is built (moonkey.jungle) if missing.
 #
 # Prereqs: watch plugged in via USB, unlocked, "allow file transfer" accepted.
 # Needs gio (gvfs MTP backend) — already present on this system.
@@ -18,7 +22,7 @@ set -euo pipefail
 
 DEVICE="${1:-marq2aviator}"
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PRG="$PROJECT_DIR/bin/moonkey-$DEVICE.prg"
+PRG="${2:-$PROJECT_DIR/bin/moonkey-$DEVICE.prg}"
 KEY="${CONNECTIQ_KEY:-$HOME/.connectiq/developer_key.der}"
 CLI="$HOME/go/bin/connect-iq-sdk-manager-cli"
 
@@ -29,6 +33,7 @@ die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 # 1. Make sure the .prg exists (build it if missing).
 # ---------------------------------------------------------------------------
 if [ ! -f "$PRG" ]; then
+    [ -z "${2:-}" ] || die "Specified .prg not found: $PRG (build it first)"
     log "No prebuilt .prg for '$DEVICE' — building it"
     [ -f "$KEY" ] || die "developer key not found at $KEY"
     if ! command -v monkeyc >/dev/null 2>&1; then
