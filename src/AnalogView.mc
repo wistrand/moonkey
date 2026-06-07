@@ -1301,15 +1301,7 @@ class AnalogView extends WatchUi.WatchFace {
                 hourToArcDegrees(localHour(sr)), hourToArcDegrees(localHour(ss)));
         }
 
-        // Current-time pointer, coloured to match the side it sits on:
-        // daylight (amber) during the day, night (dark gray) otherwise.
-        var pointerColor = Graphics.COLOR_DK_GRAY;
-        if (sr != null && ss != null) {
-            var nowSec = now.value();
-            if (nowSec > sr.value() && nowSec < ss.value()) {
-                pointerColor = _accentColor;
-            }
-        }
+        var pointerColor = _accentColor;
         var clock = System.getClockTime();
         var h = clock.hour + clock.min / 60.0;
         var a = h * Math.PI / 12.0; // radians clockwise from the top (midnight at top)
