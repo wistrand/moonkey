@@ -12,17 +12,24 @@ data fields.
 ## Features
 
 - **Moon** — a real lunar photo, soft-terminator shaded for the current phase and rotated to the
-  sky inclination for your location (bright-limb position angle − parallactic angle), all baked
-  into a cached bitmap once per hour so each frame is a cheap blit.
+  true sky inclination for your location (bright-limb position angle − parallactic angle), all
+  baked into a cached bitmap once per hour so each frame is a cheap blit. Position comes from a
+  Meeus lunar series (verified against the `solunar` ephemeris), and a thin arc around the disc
+  traces the Moon's above-horizon span (moonrise→moonset).
 - **24-hour day/night ring** — midnight at top, noon at bottom; an amber arc spans daylight
   (computed sunrise→sunset), a pointer marks the current time, and a gradient "sun ring" peaks at
   solar noon.
 - **Hands differentiated by silhouette** — hour is a tapered baton ending in an open ring, minute
   a tapered lance to a point, second a white shaft with an amber tip. The slow hands creep
   smoothly; the seconds tick (1 Hz redraw budget).
-- **Data fields** — heart rate, steps, intensity minutes, floors, UTC, sunrise/sunset, date, and
-  time, with weather: an icon (clear / cloud / rain / snow / storm / fog), temperature, a
-  precipitation-chance bar, and a meteorological **wind barb** (knots).
+- **Configurable** (native watch-face editor, fenix 8+) — accent colour, data colour, a world
+  **timezone** for one field (17 zones, with automatic DST), and **five complication slots** you
+  pick by tapping the field on the face. Falls back to sensible defaults on devices without the
+  editor.
+- **Data fields** — five of them are the configurable complications above (defaulting to heart
+  rate, steps, intensity minutes, floors, and sunrise/sunset); plus date, time, and weather: an
+  icon (clear / cloud / rain / snow / storm / fog), temperature, a precipitation-chance bar, and a
+  meteorological **wind barb** (knots).
 - **Always-on aware** — keeps colours (the OS dims and pixel-shifts) but drops decorative,
   pixel-hungry elements (Moon, second hand, sun ring, wind barb, …) in low-power mode.
 

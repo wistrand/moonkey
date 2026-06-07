@@ -34,8 +34,14 @@ class AnalogView extends WatchUi.WatchFace {
     // selector. _tzStyle indexes these tables (id N in watchface-config.xml ->
     // index N here). Fixed UTC offsets in hours -- NO DST (CIQ has no tz database).
     private var _tzStyle as Number = 0;
-    private const TZ_OFFSET = [0.0, 0.0, 1.0, 3.5, 4.0, 5.5, 9.0, 10.0, -5.0, -8.0];
-    private const TZ_LABEL = ["UTC", "LON", "STO", "TEH", "DXB", "IND", "TYO", "SYD", "NYC", "LAX"];
+    private const TZ_OFFSET = [0.0, 0.0, 1.0, 3.5, 4.0, 5.5, 9.0, 10.0, -5.0, -8.0,
+        -6.0, -3.0, 3.0, 8.0, 7.0, 12.0, -10.0]; // standard-time hours
+    private const TZ_LABEL = ["UTC", "LON", "STO", "TEH", "DXB", "IND", "TYO", "SYD", "NYC", "LAX",
+        "CHI", "SAO", "MOW", "SHA", "BKK", "AKL", "HNL"];
+    // DST rule per zone: 0 none, 1 EU, 2 US, 3 AU, 4 NZ. (Tehran/Brazil/Moscow/
+    // China have no DST; Tehran abolished it in 2022, Brazil in 2019.)
+    private const TZ_DST = [0, 1, 1, 0, 0, 0, 0, 3, 2, 2,
+        2, 0, 0, 0, 0, 4, 0];
 
     // Configurable complication slots. The watch-face-config schema requires
     // integer <complication id>s, so these name the slot indices (id N in
@@ -60,6 +66,7 @@ class AnalogView extends WatchUi.WatchFace {
     private var _dataColor as Number = 0xAAAAAA; // = light gray (COLOR_LT_GRAY)
     private const RING_R_FRAC = 0.25;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
     private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
+    private const MOON_ARC_COLOR = Graphics.COLOR_DK_GRAY; // moon above-horizon ring
 
     private var _isSleeping as Boolean = false;
     private var _vectorFont as Graphics.VectorFont or Null = null;
@@ -68,6 +75,12 @@ class AnalogView extends WatchUi.WatchFace {
     private var _moon as WatchUi.BitmapResource or Null = null;
     private var _moonBuf as Graphics.BufferedBitmapReference or Null = null;
     private var _moonBucket as Number = -1;   // hour bucket the buffer was baked for
+    // Moonrise/moonset (local hours), recomputed hourly. _mrsState: 0 normal,
+    // 1 up all day, 2 down all day, 3 no location.
+    private var _mrsRise as Float = 0.0;
+    private var _mrsSet as Float = 0.0;
+    private var _mrsState as Number = 3;
+    private var _mrsBucket as Number = -1;
 
     // Precomputed constant geometry (built once, reused every frame).
     private var _heartHx as Lang.Array or Null = null; // parametric heart curve x
@@ -110,6 +123,7 @@ class AnalogView extends WatchUi.WatchFace {
         // day/night arc, so the arc is drawn on top.
         if (!_isSleeping) {
             drawMoon(dc, cx, cy, (radius * 0.18).toNumber(), moonPhase());
+            drawMoonArc(dc, cx, cy, radius);
         }
         drawDayNightArc(dc, cx, cy, radius);
         drawDataFields(dc, cx, cy, radius);
@@ -267,7 +281,11 @@ class AnalogView extends WatchUi.WatchFace {
         var ddc = disp.getDc();
         ddc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         ddc.clear();
-        var tilt = moonTilt() + MOON_TILT_OFFSET;
+        // The baked image's lit side is fixed (left when waning, right when
+        // waxing) -- a +/-90 deg baseline. moonTilt() is the true bright-limb PA
+        // measured CCW from the zenith; rotate the image so its lit side lands
+        // there. AffineTransform.rotate is CW, so tilt = baseline - moonTilt().
+        var tilt = (waxing ? -Math.PI / 2.0 : Math.PI / 2.0) - moonTilt() + MOON_TILT_OFFSET;
         var xform = new Graphics.AffineTransform();
         xform.translate(r.toFloat(), r.toFloat());
         xform.rotate(tilt);
@@ -302,8 +320,10 @@ class AnalogView extends WatchUi.WatchFace {
         var ll = loc.toRadians(); // [lat, lon] radians
         var latR = ll[0];
         var rad = Math.PI / 180.0;
-        var jd = Time.now().value() / 86400.0 + 2440587.5;
-        var dd = jd - 2451545.0;
+        // Days since J2000. Subtract the epoch (Unix sec of 2000-01-01 12:00 UTC)
+        // as integers first -- adding the ~2.46M Julian Date in 32-bit float would
+        // quantize to ~6-hour steps and throw the Moon position off by tens of deg.
+        var dd = (Time.now().value() - 946728000) / 86400.0;
         var lonDeg = ll[1] / rad;
         var ecl = (23.4393 - 3.563e-7 * dd) * rad;
 
@@ -321,46 +341,11 @@ class AnalogView extends WatchUi.WatchFace {
         var ys = rs * Math.sin(lonsun);
         var raSun = Math.atan2(ys * Math.cos(ecl), xs);
         var decSun = Math.atan2(ys * Math.sin(ecl), Math.sqrt(xs * xs + (ys * Math.cos(ecl)) * (ys * Math.cos(ecl))));
-        var lsun = ms + ws;
 
-        // Moon (Schlyter, main perturbations).
-        var nm = 125.1228 - 0.0529538083 * dd;
-        var wm = 318.0634 + 0.1643573223 * dd;
-        var mm = 115.3654 + 13.0649929509 * dd;
-        var em = 0.054900;
-        var am = 60.2666;
-        var mmR = mm * rad;
-        var eM = mmR + em * Math.sin(mmR) * (1.0 + em * Math.cos(mmR));
-        eM = eM - (eM - em * Math.sin(eM) - mmR) / (1.0 - em * Math.cos(eM));
-        var xm = am * (Math.cos(eM) - em);
-        var ym = am * Math.sqrt(1.0 - em * em) * Math.sin(eM);
-        var rm = Math.sqrt(xm * xm + ym * ym);
-        var vw = Math.atan2(ym, xm) + wm * rad;
-        var nmR = nm * rad;
-        var imR = 5.1454 * rad;
-        var xe1 = rm * (Math.cos(nmR) * Math.cos(vw) - Math.sin(nmR) * Math.sin(vw) * Math.cos(imR));
-        var ye1 = rm * (Math.sin(nmR) * Math.cos(vw) + Math.cos(nmR) * Math.sin(vw) * Math.cos(imR));
-        var ze1 = rm * Math.sin(vw) * Math.sin(imR);
-        var lonM = Math.atan2(ye1, xe1);
-        var latM = Math.atan2(ze1, Math.sqrt(xe1 * xe1 + ye1 * ye1));
-        var lm = nm + wm + mm;
-        var dEl = (lm - lsun) * rad;
-        var fAr = (lm - nm) * rad;
-        lonM = lonM
-            - 1.274 * rad * Math.sin(mmR - 2.0 * dEl)
-            + 0.658 * rad * Math.sin(2.0 * dEl)
-            - 0.186 * rad * Math.sin(msR)
-            - 0.059 * rad * Math.sin(2.0 * mmR - 2.0 * dEl)
-            + 0.053 * rad * Math.sin(mmR + 2.0 * dEl);
-        latM = latM - 0.173 * rad * Math.sin(fAr - 2.0 * dEl);
-        var clat = Math.cos(latM);
-        var xg = clat * Math.cos(lonM);
-        var yg = clat * Math.sin(lonM);
-        var zg = Math.sin(latM);
-        var yeq = yg * Math.cos(ecl) - zg * Math.sin(ecl);
-        var zeq = yg * Math.sin(ecl) + zg * Math.cos(ecl);
-        var raMoon = Math.atan2(yeq, xg);
-        var decMoon = Math.atan2(zeq, Math.sqrt(xg * xg + yeq * yeq));
+        // Moon equatorial coordinates (shared with moonRiseSet).
+        var rd = moonRaDec(dd, ecl);
+        var raMoon = rd[0];
+        var decMoon = rd[1];
 
         // Bright-limb position angle (from celestial north).
         var dA = raSun - raMoon;
@@ -368,12 +353,173 @@ class AnalogView extends WatchUi.WatchFace {
             Math.sin(decSun) * Math.cos(decMoon) - Math.cos(decSun) * Math.sin(decMoon) * Math.cos(dA));
 
         // Parallactic angle (rotate to the local vertical).
-        var gmst = 280.46061837 + 360.98564736629 * dd;
+        // GMST (deg), reduced mod 360 with whole revolutions dropped from the
+        // integer-day term so the 32-bit float product stays small (else ~0.4 deg).
+        var ddi = dd.toNumber();
+        var gmst = rev(280.46061837 + 0.98564736629 * ddi + 360.98564736629 * (dd - ddi));
         var ha = (gmst + lonDeg) * rad - raMoon;
         var q = Math.atan2(Math.sin(ha),
             Math.tan(latR) * Math.cos(decMoon) - Math.sin(decMoon) * Math.cos(ha));
 
         return chi - q;
+    }
+
+    //! Geocentric equatorial moon coordinates [RA, Dec] in radians, Meeus ch.47
+    //! principal terms (~0.02 deg -- the old Schlyter port ran ~6 deg off in
+    //! declination, throwing moonset/tilt hours out). Shared by moonTilt and
+    //! moonRiseSet. ecl = obliquity (radians).
+    private function moonRaDec(dd as Float, ecl as Float) as Lang.Array {
+        var rad = Math.PI / 180.0;
+        var t = dd / 36525.0; // Julian centuries since J2000
+        var lp = rev(218.3164477 + 481267.88123421 * t - 0.0015786 * t * t);
+        var d = rev(297.8501921 + 445267.1114034 * t - 0.0018819 * t * t);
+        var m = rev(357.5291092 + 35999.0502909 * t - 0.0001536 * t * t);
+        var mp = rev(134.9633964 + 477198.8675055 * t + 0.0087414 * t * t);
+        var f = rev(93.2720950 + 483202.0175233 * t - 0.0036539 * t * t);
+        var e = 1.0 - 0.002516 * t - 0.0000074 * t * t;
+        // [coef (1e-6 deg), D, M, M', F] -- longitude (47.A) then latitude (47.B).
+        var lt = [
+            [6288774, 0, 0, 1, 0], [1274027, 2, 0, -1, 0], [658314, 2, 0, 0, 0], [213618, 0, 0, 2, 0],
+            [-185116, 0, 1, 0, 0], [-114332, 0, 0, 0, 2], [58793, 2, 0, -2, 0], [57066, 2, -1, -1, 0],
+            [53322, 2, 0, 1, 0], [45758, 2, -1, 0, 0], [-40923, 0, 1, -1, 0], [-34720, 1, 0, 0, 0],
+            [-30383, 0, 1, 1, 0], [15327, 2, 0, 0, -2], [-12528, 0, 0, 1, 2], [10980, 0, 0, 1, -2],
+            [10675, 4, 0, -1, 0], [10034, 0, 0, 3, 0], [8548, 4, 0, -2, 0], [-7888, 2, 1, -1, 0],
+            [-6766, 2, 1, 0, 0], [-5163, 1, 0, -1, 0], [4987, 1, 1, 0, 0], [4036, 2, -1, 1, 0]];
+        var bt = [
+            [5128122, 0, 0, 0, 1], [280602, 0, 0, 1, 1], [277693, 0, 0, 1, -1], [173237, 2, 0, 0, -1],
+            [55413, 2, 0, -1, 1], [46271, 2, 0, -1, -1], [32573, 2, 0, 0, 1], [17198, 0, 0, 2, 1],
+            [9266, 2, 0, 1, -1], [8822, 0, 0, 2, -1], [8216, 2, -1, 0, -1], [4324, 2, 0, -2, -1],
+            [4200, 2, 0, 1, 1], [-3359, 2, 1, 0, -1], [2463, 2, -1, -1, 1], [2211, 2, -1, 0, 1],
+            [2065, 2, -1, -1, -1], [-1870, 0, 1, -1, -1], [1828, 4, 0, -1, -1], [-1794, 0, 1, 0, 1]];
+        var sl = 0.0;
+        for (var i = 0; i < lt.size(); i++) {
+            var term = lt[i] as Lang.Array;
+            var arg = (term[1] as Number) * d + (term[2] as Number) * m
+                + (term[3] as Number) * mp + (term[4] as Number) * f;
+            sl += (term[0] as Number) * moonE(e, term[2] as Number) * Math.sin(arg * rad);
+        }
+        var sb = 0.0;
+        for (var i = 0; i < bt.size(); i++) {
+            var term = bt[i] as Lang.Array;
+            var arg = (term[1] as Number) * d + (term[2] as Number) * m
+                + (term[3] as Number) * mp + (term[4] as Number) * f;
+            sb += (term[0] as Number) * moonE(e, term[2] as Number) * Math.sin(arg * rad);
+        }
+        var lon = (lp + sl / 1000000.0) * rad;
+        var lat = (sb / 1000000.0) * rad;
+        var ce = Math.cos(ecl);
+        var se = Math.sin(ecl);
+        var slon = Math.sin(lon);
+        var ra = Math.atan2(slon * ce - Math.tan(lat) * se, Math.cos(lon));
+        var dec = Math.asin(Math.sin(lat) * ce + Math.cos(lat) * se * slon);
+        return [ra, dec];
+    }
+
+    //! Meeus eccentricity factor E^|m| for the sun-anomaly (M) multiplier.
+    private function moonE(e as Float, m as Number) as Float {
+        if (m == 0) {
+            return 1.0;
+        }
+        return (m == 1 || m == -1) ? e : e * e;
+    }
+
+    //! Moonrise/moonset as local clock hours: [rise, set, state]. Single-pass
+    //! (RA/Dec at "now"), ~+/-20-30 min. state: 0 normal, 1 up-all-day, 2
+    //! down-all-day, 3 no location.
+    private function moonRiseSet() as Lang.Array {
+        var loc = null;
+        if (Toybox has :Position) {
+            var pinfo = Position.getInfo();
+            if (pinfo != null && pinfo.position != null) {
+                loc = pinfo.position;
+            }
+        }
+        if (loc == null) {
+            loc = sunLocation();
+        }
+        if (loc == null) {
+            return [0.0, 0.0, 3];
+        }
+        var ll = loc.toRadians();
+        var latR = ll[0];
+        var rad = Math.PI / 180.0;
+        var lonDeg = ll[1] / rad;
+        // Days since J2000. Subtract the epoch (Unix sec of 2000-01-01 12:00 UTC)
+        // as integers first -- adding the ~2.46M Julian Date in 32-bit float would
+        // quantize to ~6-hour steps and throw the Moon position off by tens of deg.
+        var dd = (Time.now().value() - 946728000) / 86400.0;
+        var ecl = (23.4393 - 3.563e-7 * dd) * rad;
+        var rd = moonRaDec(dd, ecl);
+        var ra = rd[0];
+        var dec = rd[1];
+        // Standard altitude for the moon (refraction + ~parallax), ~+0.125 deg.
+        var h0 = 0.125 * rad;
+        var cosH0 = (Math.sin(h0) - Math.sin(latR) * Math.sin(dec)) / (Math.cos(latR) * Math.cos(dec));
+        if (cosH0 > 1.0) {
+            return [0.0, 0.0, 2]; // never rises
+        }
+        if (cosH0 < -1.0) {
+            return [0.0, 0.0, 1]; // circumpolar, never sets
+        }
+        var h0arc = Math.acos(cosH0) / rad; // deg
+        // GMST (deg), reduced mod 360 with whole revolutions dropped from the
+        // integer-day term so the 32-bit float product stays small (else ~0.4 deg).
+        var ddi = dd.toNumber();
+        var gmst = rev(280.46061837 + 0.98564736629 * ddi + 360.98564736629 * (dd - ddi));
+        var haNow = normDeg180((gmst + lonDeg) - ra / rad);
+        var rate = 14.492; // moon apparent diurnal rate, deg/hr
+        var clk = System.getClockTime();
+        var nowH = clk.hour + clk.min / 60.0;
+        var transitH = nowH - haNow / rate;
+        var dH = h0arc / rate;
+        return [wrap24(transitH - dH), wrap24(transitH + dH), 0];
+    }
+
+    private function normDeg180(x as Float) as Float {
+        var d = x;
+        while (d > 180.0) { d -= 360.0; }
+        while (d < -180.0) { d += 360.0; }
+        return d;
+    }
+
+    //! Reduce an angle (degrees) to [0, 360).
+    private function rev(x as Float) as Float {
+        var v = x - (x / 360.0).toNumber() * 360.0;
+        if (v < 0.0) { v += 360.0; }
+        return v;
+    }
+
+    private function wrap24(h as Float) as Float {
+        var x = h;
+        while (x < 0.0) { x += 24.0; }
+        while (x >= 24.0) { x -= 24.0; }
+        return x;
+    }
+
+    //! Thin ring hugging the moon showing its above-horizon span (moonrise ->
+    //! moonset), with a current-time pointer. Recomputed hourly; interactive only.
+    private function drawMoonArc(dc as Graphics.Dc, cx as Number, cy as Number, radius as Number) as Void {
+        var bucket = (Time.now().value() / 3600).toNumber();
+        if (bucket != _mrsBucket) {
+            _mrsBucket = bucket;
+            var rs = moonRiseSet();
+            _mrsRise = rs[0];
+            _mrsSet = rs[1];
+            _mrsState = rs[2];
+        }
+        if (_mrsState == 3 || _mrsState == 2) {
+            return; // no location, or moon never up today -> no arc
+        }
+        var ar = (radius * 0.21).toNumber();
+        dc.setPenWidth(2);
+        dc.setColor(MOON_ARC_COLOR, Graphics.COLOR_TRANSPARENT);
+        if (_mrsState == 1) {
+            dc.drawArc(cx, cy, ar, Graphics.ARC_CLOCKWISE, 0, 360); // up all day
+        } else {
+            dc.drawArc(cx, cy, ar, Graphics.ARC_CLOCKWISE,
+                hourToArcDegrees(_mrsRise), hourToArcDegrees(_mrsSet));
+        }
+        // No current-time pointer: the day/night arc already marks "now".
     }
 
     //! Draw one horizontal shadow segment ([u0,u1] mapped to x, clamped to the
@@ -433,7 +579,7 @@ class AnalogView extends WatchUi.WatchFace {
             // Much smaller scalable font for the N/S type labels.
             _labelFont = Graphics.getVectorFont({
                 :face => faces,
-                :size => (dc.getFontHeight(Graphics.FONT_XTINY) * 0.6).toNumber()
+                :size => (dc.getFontHeight(Graphics.FONT_XTINY) * 0.8).toNumber()
             });
         }
     }
@@ -822,14 +968,106 @@ class AnalogView extends WatchUi.WatchFace {
         if (i < 0 || i >= TZ_OFFSET.size()) {
             i = 0;
         }
-        var secs = Time.now().value() + (TZ_OFFSET[i] * 3600).toNumber();
-        var info = Gregorian.utcInfo(new Time.Moment(secs), Time.FORMAT_SHORT);
+        var stdOff = TZ_OFFSET[i] as Float;
+        // DST is judged against the zone's standard-time local date.
+        var ld = Gregorian.utcInfo(new Time.Moment(Time.now().value() + (stdOff * 3600).toNumber()),
+            Time.FORMAT_SHORT);
+        var off = stdOff + dstHours(TZ_DST[i] as Number, ld.year, doy(ld.year, ld.month, ld.day));
+        var info = Gregorian.utcInfo(new Time.Moment(Time.now().value() + (off * 3600).toNumber()),
+            Time.FORMAT_SHORT);
         return TZ_LABEL[i] + " " + Lang.format("$1$:$2$",
             [info.hour.format("%02d"), info.min.format("%02d")]);
     }
 
+    //! Hours to add for DST given the zone's rule group and its local date.
+    //! group: 1 EU (last Sun Mar -> last Sun Oct), 2 US (2nd Sun Mar -> 1st Sun
+    //! Nov), 3 AU/Sydney (1st Sun Oct -> 1st Sun Apr), 4 NZ (last Sun Sep -> 1st
+    //! Sun Apr). 3 and 4 are southern-hemisphere and wrap the year.
+    private function dstHours(group as Number, year as Number, nowDoy as Number) as Float {
+        if (group == 1) {
+            var s = doy(year, 3, lastSunday(year, 3));
+            var e = doy(year, 10, lastSunday(year, 10));
+            return (nowDoy >= s && nowDoy < e) ? 1.0 : 0.0;
+        }
+        if (group == 2) {
+            var s = doy(year, 3, nthSunday(year, 3, 2));
+            var e = doy(year, 11, nthSunday(year, 11, 1));
+            return (nowDoy >= s && nowDoy < e) ? 1.0 : 0.0;
+        }
+        if (group == 3) {
+            var s = doy(year, 10, nthSunday(year, 10, 1));
+            var e = doy(year, 4, nthSunday(year, 4, 1));
+            return (nowDoy >= s || nowDoy < e) ? 1.0 : 0.0;
+        }
+        if (group == 4) { // NZ: last Sun Sep -> 1st Sun Apr (southern, wraps)
+            var s = doy(year, 9, lastSunday(year, 9));
+            var e = doy(year, 4, nthSunday(year, 4, 1));
+            return (nowDoy >= s || nowDoy < e) ? 1.0 : 0.0;
+        }
+        return 0.0;
+    }
+
+    //! Day of week (0 = Sunday) for a Gregorian date, via Sakamoto.
+    private function weekday(y as Number, m as Number, d as Number) as Number {
+        var t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+        var yy = (m < 3) ? y - 1 : y;
+        return (yy + yy / 4 - yy / 100 + yy / 400 + t[m - 1] + d) % 7;
+    }
+
+    //! Day-of-month of the nth (1-based) Sunday of a month.
+    private function nthSunday(y as Number, m as Number, n as Number) as Number {
+        var first = 1 + ((7 - weekday(y, m, 1)) % 7);
+        return first + 7 * (n - 1);
+    }
+
+    //! Day-of-month of the last Sunday of a month.
+    private function lastSunday(y as Number, m as Number) as Number {
+        var ld = daysInMonth(y, m);
+        return ld - weekday(y, m, ld);
+    }
+
+    private function leapYear(y as Number) as Boolean {
+        return (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0);
+    }
+
+    private function daysInMonth(y as Number, m as Number) as Number {
+        if (m == 2) {
+            return leapYear(y) ? 29 : 28;
+        }
+        return [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+    }
+
+    //! Day of year (1..366).
+    private function doy(y as Number, m as Number, d as Number) as Number {
+        var dim = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        var n = d;
+        for (var k = 1; k < m; k++) {
+            n += dim[k - 1];
+        }
+        if (m > 2 && leapYear(y)) {
+            n += 1;
+        }
+        return n;
+    }
+
     //! Location for sun calculations: prefer the cached weather observation
     //! position, fall back to the last known GPS fix (Positioning permission).
+    //! True when the observer is in the southern hemisphere (GPS first, weather
+    //! fallback) -- wind barbs mirror their feathers there.
+    private function observerSouthern() as Boolean {
+        var loc = null;
+        if (Toybox has :Position) {
+            var pinfo = Position.getInfo();
+            if (pinfo != null && pinfo.position != null) {
+                loc = pinfo.position;
+            }
+        }
+        if (loc == null) {
+            loc = sunLocation();
+        }
+        return (loc != null) && ((loc.toRadians()[0] as Float) < 0.0);
+    }
+
     private function sunLocation() as Position.Location or Null {
         if (Toybox has :Weather) {
             var conditions = Weather.getCurrentConditions();
@@ -1065,19 +1303,26 @@ class AnalogView extends WatchUi.WatchFace {
         var id = _compId[slot];
         var t = (id != null) ? id.getType() : null;
 
+        // N/S carry a label beside the value (not the heart icon) for non-HR types;
+        // nudge the field outward a touch (N up, S down) so the label clears the ring.
+        var vy = y;
+        if (t != null && t != Complications.COMPLICATION_TYPE_HEART_RATE) {
+            vy += isNorth ? -textH * 0.55 : textH * 0.55;
+        }
+
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, y, Graphics.FONT_TINY, slotValue(slot),
+        dc.drawText(x, vy, Graphics.FONT_TINY, slotValue(slot),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         if (t == Complications.COMPLICATION_TYPE_HEART_RATE) {
             if (!_isSleeping) {
                 dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
                 var iconH = dc.getFontHeight(Graphics.FONT_XTINY) * 0.65;
-                drawHeart(dc, x, isNorth ? (y - textH) : (y + textH), iconH / 0.6875);
+                drawHeart(dc, x, isNorth ? (vy - textH) : (vy + textH), iconH / 0.6875);
             }
         } else if (t != null) {
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            var ly = isNorth ? (y - textH * 0.7) : (y + textH * 0.7);
+            var ly = isNorth ? (vy - textH * 0.7) : (vy + textH * 0.7);
             var just = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
             if (_labelFont != null) {
                 dc.drawText(x, ly, _labelFont, cardinalLabel(t), just);
@@ -1277,7 +1522,9 @@ class AnalogView extends WatchUi.WatchFace {
         var full = len * 0.36;
         var half = len * 0.20;
         var step = len * 0.18;
-        var fAng = Math.atan2(dy, dx) + 105.0 * rad; // feathers slant back to one side
+        // Feathers slant back to one side -- mirrored in the southern hemisphere.
+        var side = observerSouthern() ? -105.0 : 105.0;
+        var fAng = Math.atan2(dy, dx) + side * rad;
         var fdx = Math.cos(fAng);
         var fdy = Math.sin(fAng);
 

@@ -12,4 +12,11 @@
     <string id="tzSydney">Sydney</string>
     <string id="tzNewYork">New York</string>
     <string id="tzLosAngeles">Los Angeles</string>
+    <string id="tzChicago">Chicago</string>
+    <string id="tzSaoPaulo">Sao Paulo</string>
+    <string id="tzMoscow">Moscow</string>
+    <string id="tzShanghai">Shanghai</string>
+    <string id="tzBangkok">Bangkok</string>
+    <string id="tzAuckland">Auckland</string>
+    <string id="tzHonolulu">Honolulu</string>
 </strings>

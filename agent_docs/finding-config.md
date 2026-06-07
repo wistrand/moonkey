@@ -1,4 +1,7 @@
-# Finding: configurable accent colour + LR-field timezone (must work for sideloaded `.prg`)
+# Finding: on-device configurability (accent / data colour / timezone / complications)
+
+## What shipped (resolution)
+We went with **Option C, the native watch-face configuration API** (CIQ 5.1.0) — which this research had flagged as "limited/uncertain," but it turned out to cover everything for the fenix 8 family: `resources/watchface-config.xml` + `Application.WatchFaceConfig.getSettings()`, with `AnalogWatchFaceDelegate.onWatchFaceConfigEdited` for live preview. `marq2` compiles but has no editor, so it falls back to the in-code defaults (the build-time path below still applies there). What's exposed: **accent colour**, **data colour**, a **timezone** picker (the `<styles>` selector repurposed, since the numeric-setting path isn't available to custom faces), and **five complication slots** (selected by tapping the field on the face via `onTap`/`setSelectedComplication`). The open decisions resolved as: accent drives the daylight arc too; the **SW** field is the configurable-TZ clock; DST is computed in-code per rule group (no tz database). See [architecture.md](architecture.md#configuration). The rest of this note is the original research that led there.
 
 ## Key constraint — sideloaded settings
 Standard Connect IQ app settings (`resources/settings/settings.xml` edited in **Garmin Connect Mobile / Garmin Express**) **do NOT work for a plain file-copy sideload**. The compiled settings JSON is only consumed by GCM/Express for **store-installed or beta** apps.

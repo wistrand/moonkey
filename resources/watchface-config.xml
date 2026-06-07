@@ -15,6 +15,13 @@
             <style id="7" label="@Strings.tzSydney"/>
             <style id="8" label="@Strings.tzNewYork"/>
             <style id="9" label="@Strings.tzLosAngeles"/>
+            <style id="10" label="@Strings.tzChicago"/>
+            <style id="11" label="@Strings.tzSaoPaulo"/>
+            <style id="12" label="@Strings.tzMoscow"/>
+            <style id="13" label="@Strings.tzShanghai"/>
+            <style id="14" label="@Strings.tzBangkok"/>
+            <style id="15" label="@Strings.tzAuckland"/>
+            <style id="16" label="@Strings.tzHonolulu"/>
         </styles>
         <accentColors allowAny="true"/>
         <!-- Data colour for the cardinal (N/E/S/W) field readouts + weather glyphs. -->
