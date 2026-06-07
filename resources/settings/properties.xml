@@ -5,7 +5,7 @@
          these only override when the user actually changes them. See applyProperties. -->
     <property id="accentColor" type="number">-1</property>
     <property id="dataColor" type="number">-1</property>
-    <property id="tz" type="number">-1</property>
+    <property id="tz" type="number">0</property>
     <property id="compSE" type="number">0</property>
     <property id="compNE" type="number">0</property>
     <property id="compN" type="number">0</property>

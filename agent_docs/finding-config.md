@@ -8,6 +8,13 @@
 
 **Precedence:** native first, then `applyProperties()` overrides — but each property defaults to a **sentinel** (`-1`/`0` = unset), so app settings only override fields the user actually changed. The open decisions resolved as: accent drives the daylight arc too; the **SW** field is the configurable-TZ clock; DST is computed in-code per rule group (no tz database). See [architecture.md](architecture.md#configuration). The rest of this note is the original research that led there.
 
+### Testing app settings in the simulator
+The build emits a valid `bin/moonkey-<device>-settings.json` descriptor, but the sim's **App Settings Editor reads empty under `monkeydo`/`make run`** — those send only the `.prg` and never register the descriptor (the editor reports "No settings file found"). That registration is done by the **VS Code Monkey C extension** (build + Run) / Eclipse plugin, not by the `monkeydo` CLI, and there's no documented CLI command nor a manual "open settings file" option in the editor.
+
+Reverse-engineering it isn't worth it (and was checked): the editor (`Sim_AppSettingsEditor.cpp`) is a **`wxWebView`** whose `makeSettingsRequest` **POSTs the descriptor + current values (multipart `settingsFile` / `clientInputFile`) to Garmin's `https://*.garmin.com/.../appSettings2/sdk/input` web service and renders the HTML it returns** — the same server-side pipeline Garmin Connect uses (`supportsLiveValidation` is part of that handshake). So the editor needs BOTH a descriptor pushed in *and* internet to Garmin; there is no purely-local form. The push logic lives in the TS VS Code extension (not in `monkeybrains.jar`, which only carries the API defs, the build, and the JSON parser), so there's nothing CLI-side to drive it.
+
+Practical paths: edit app settings in the sim only via the **VS Code launcher** (online); validate on a real **beta** install (Garmin Connect, same server pipeline); or, fully offline, edit a `properties.xml` default and confirm `applyProperties()` applies it. The native watch-face editor (fenix 8+) is unaffected — it's driven by `watchface-config.xml`, rendered on-device, not by this server-backed descriptor flow.
+
 ## Key constraint — sideloaded settings
 Standard Connect IQ app settings (`resources/settings/settings.xml` edited in **Garmin Connect Mobile / Garmin Express**) **do NOT work for a plain file-copy sideload**. The compiled settings JSON is only consumed by GCM/Express for **store-installed or beta** apps.
 
