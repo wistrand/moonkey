@@ -6,7 +6,11 @@ Garmin Connect IQ watchface ("Moonkey") in Monkey C. Targets AMOLED: `marq2aviat
 
 ## Layout
 - `manifest.xml`, `moonkey.jungle` at root. **Sources live in `src/`** (not the default `source/`); the jungle sets `base.sourcePath = src`.
-- **Dev vs store identity:** `manifest.xml` holds the **production app id** (`a3f1c2d4…`, the permanent Store identity — freeze it, never regenerate, sign with the same key). `manifest-dev.xml` + `moonkey-dev.jungle` are a **dev sideload variant** with a *different* id (`6ca23839…`) and name (`Moonkey Dev`, `@Strings.AppNameDev`), so a sideloaded dev copy coexists on the watch with the store/beta build (Garmin keys app identity on the id, not the name). **`make install` builds+sideloads the dev variant** (`bin/moonkey-dev-<dev>.prg`); **`make package` uses the production manifest** for the `.iq`. Never upload `manifest-dev.xml` to the store.
+- **Three app identities** — a published app and a beta app **cannot share an id** (per the dev portal: a beta is un-publishable, production must re-upload under a new id). Each has its own manifest + jungle + name (id, not name, is the device identity, so all three coexist on a watch):
+  - **Production** `ec31f7e162fb48578ddc754d58d040bb` — `manifest.xml`, "Moonkey", the **permanent public Store id** (freeze it, never regenerate, always the same dev key). `make package` → `bin/moonkey.iq`. `make run`/`build`/`all` also use it (id is irrelevant in the sim).
+  - **Beta** `a3f1c2d4e5b649a78c0d1e2f3a4b5c6d` — `manifest-beta.xml`, "Moonkey Beta" (`@Strings.AppNameBeta`), the release-candidate channel uploaded to the portal's "Beta Apps". `make package-beta` → `bin/moonkey-beta.iq`.
+  - **Dev** `6ca23839dbb243279c8d7b4d3fe9b35b` — `manifest-dev.xml`, "Moonkey Dev" (`@Strings.AppNameDev`), local sideload. `make install` → `bin/moonkey-dev-<dev>.prg`.
+  - Never upload `manifest-dev.xml`; never reuse the beta id for the public release.
 - `src/MoonkeyApp.mc` — `AppBase`, returns the view.
 - `src/AnalogView.mc` — all the drawing + config (`WatchFace`).
 - `src/Astro.mc` — `module Astro`: pure moon/sun ephemeris (Meeus ch.47 + Schlyter sun), bright-limb tilt, iterated moonrise/set. The view passes location/time; verified against `solunar`.

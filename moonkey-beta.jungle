@@ -1,0 +1,7 @@
+# Beta build: identical sources/resources as moonkey.jungle, but uses
+# manifest-beta.xml (the beta-channel app id + "Moonkey Beta" name) for uploads
+# to the dev portal's "Beta Apps". Used by `make package-beta`.
+project.manifest = manifest-beta.xml
+
+base.sourcePath = src
+base.resourcePath = resources

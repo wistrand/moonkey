@@ -14,6 +14,7 @@ MONKEYDO := $(SDK_BIN)/monkeydo
 SIM      := $(SDK_BIN)/simulator
 JUNGLE   := moonkey.jungle
 DEV_JUNGLE := moonkey-dev.jungle
+BETA_JUNGLE := moonkey-beta.jungle
 BIN      := bin
 SRC      := $(wildcard src/*.mc) manifest.xml $(JUNGLE) $(wildcard resources/*/*)
 PRGS     := $(addprefix $(BIN)/moonkey-,$(addsuffix .prg,$(DEVICES)))
@@ -23,7 +24,7 @@ MOON_RAW  := data/moon-raw.jpg
 MOON_PNG  := resources/drawables/moon.png
 MOON_CROP := 1600x1600+739+1243
 
-.PHONY: all build run sim sim-restart install uninstall package clean moon help
+.PHONY: all build run sim sim-restart install uninstall package package-beta clean moon help
 .DEFAULT_GOAL := help
 
 help: ## Show this help
@@ -60,9 +61,13 @@ install: ## Build + sideload the DEV variant (separate app id + "Moonkey Dev"; c
 uninstall: ## Remove sideloaded Moonkey from a connected watch (./uninstall.sh DEVICE to narrow)
 	./uninstall.sh
 
-package: ## Build a multi-device .iq for store submission
+package: ## Build the PRODUCTION .iq (manifest.xml, public store id) -> bin/moonkey.iq
 	@mkdir -p $(BIN)
 	$(MONKEYC) -e -f $(JUNGLE) -o $(BIN)/moonkey.iq -y $(KEY) -w -r
+
+package-beta: ## Build the BETA .iq (manifest-beta.xml, beta id) -> bin/moonkey-beta.iq
+	@mkdir -p $(BIN)
+	$(MONKEYC) -e -f $(BETA_JUNGLE) -o $(BIN)/moonkey-beta.iq -y $(KEY) -w -r
 
 moon: ## Regenerate resources/drawables/moon.png from moon-raw.jpg
 	magick $(MOON_RAW) -crop $(MOON_CROP) +repage -resize 100x100 \

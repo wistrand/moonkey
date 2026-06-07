@@ -1,8 +1,9 @@
 <strings>
     <string id="AppName">Moonkey</string>
-    <!-- Name for the dev sideload variant (manifest-dev.xml); distinguishes it
-         from the store/beta "Moonkey" in the watch's face list. -->
+    <!-- Names for the non-production build variants, so they're distinguishable
+         from the public "Moonkey" in the watch's face list (each has its own id). -->
     <string id="AppNameDev">Moonkey Dev</string>
+    <string id="AppNameBeta">Moonkey Beta</string>
     <!-- SW radial timezone choices, shown in the native watch-face editor's
          style picker. The short field label lives in code (TZ_LABEL). -->
     <string id="tzUTC">UTC</string>

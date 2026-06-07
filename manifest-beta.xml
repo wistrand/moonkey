@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- PRODUCTION manifest: the public Connect IQ Store identity. This id is
-     permanent: freeze it, never regenerate, always sign with the same dev key.
-     (Beta uploads use manifest-beta.xml; dev sideload uses manifest-dev.xml. A
-     published app and a beta app cannot share an id, per the dev portal.) -->
+<!-- BETA manifest: the release-candidate channel. Uploaded to the dev portal's
+     "Beta Apps" (owner-installable for testing; this is where the Garmin Connect
+     app-settings path is exercised on-device). A beta app cannot share an id with
+     the published app, so it keeps its own id, separate from the production
+     (manifest.xml) and dev-sideload (manifest-dev.xml) ones. -->
 <iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
-    <iq:application entry="MoonkeyApp" id="ec31f7e162fb48578ddc754d58d040bb" launcherIcon="@Drawables.LauncherIcon" minApiLevel="4.2.1" name="@Strings.AppName" type="watchface">
+    <iq:application entry="MoonkeyApp" id="a3f1c2d4e5b649a78c0d1e2f3a4b5c6d" launcherIcon="@Drawables.LauncherIcon" minApiLevel="4.2.1" name="@Strings.AppNameBeta" type="watchface">
         <iq:products>
             <iq:product id="marq2aviator"/>
             <iq:product id="fenix843mm"/>
