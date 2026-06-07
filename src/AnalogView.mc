@@ -125,7 +125,7 @@ class AnalogView extends WatchUi.WatchFace {
         // Moon first: its bitmap's black corners would otherwise clip the
         // day/night arc, so the arc is drawn on top.
         if (!_isSleeping) {
-            drawMoon(dc, cx, cy, (radius * 0.18).toNumber(), moonPhase());
+            drawMoon(dc, cx, cy, (radius * 0.20).toNumber(), moonPhase());
             drawMoonArc(dc, cx, cy, radius);
         }
         drawDayNightArc(dc, cx, cy, radius);
@@ -529,9 +529,9 @@ class AnalogView extends WatchUi.WatchFace {
         if (_mrsState == 3 || _mrsState == 2) {
             return; // no location, or moon never up today -> no arc
         }
-        var ar = (radius * 0.21).toNumber();
+        var ar = (radius * 0.22).toNumber();
         dc.setPenWidth(3);
-        dc.setColor(MOON_ARC_COLOR, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(_accentColor, Graphics.COLOR_TRANSPARENT);
         if (_mrsState == 1) {
             dc.drawArc(cx, cy, ar, Graphics.ARC_CLOCKWISE, 0, 360); // up all day
         } else {

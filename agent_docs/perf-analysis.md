@@ -38,7 +38,7 @@ Use **Actual Time** (self/exclusive), not Total.
 ## Findings
 1. **Radial text dominated** — `drawRadialText` ≈ **6.9 ms/label**, 4 labels = ~28 ms/frame. It runs as `<Native Code>` (no `Dc.drawRadialText` row). The cost is per-glyph AA rasterization, inherent to drawing curved vector text. **Now cached** (see Optimizations), so it runs ~once/min instead of every frame.
 2. **`drawLine` is ~10× cheaper than `drawArc`** (24 µs vs 248 µs) — motivated the chord experiment for the gradient/sun arcs (since reverted for looks; see below).
-3. **The moon prebake worked** — rotation+shading baked hourly dropped `drawMoon` to ~1 ms/frame. The heavier ephemeris added since (Meeus ch.47 position, ~44 terms, + the moonrise/set solve) also runs at the **hourly** bake, so it stays off the per-frame budget.
+3. **The moon prebake worked** — rotation+shading baked hourly dropped `drawMoon` to ~1 ms/frame. The heavier ephemeris added since (Meeus ch.47 position, ~44 terms, + the **iterated** moonrise/set solve, ~7 Meeus evaluations) also runs at the **hourly** bake, so it stays off the per-frame budget. (A debug `println` in `drawMoon` that called `moonRiseSet()` *every* frame was a real per-frame regression during diagnosis — removed.)
 4. **`clear` costs ~5.4 ms/frame** — full-screen wipe, unavoidable without partial updates.
 
 ## Optimizations applied

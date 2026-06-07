@@ -3,6 +3,17 @@
 Diagnostic findings worth keeping (gotchas that cost real time). See also
 [finding-config.md](finding-config.md) for the configurability research.
 
+## Simulator resets GPS to lat/lon = 180° after a restart → moon goes haywire (2026-06-07)
+
+**Symptom:** after a few `make sim-restart` cycles, the moon tilt and moonrise/set looked wildly wrong ("off again"), with no code change to the moon math.
+
+**Diagnosis (via a `System.println` in `drawMoon`):** `Position.getInfo().position.toRadians()` returned **lat/lon ≈ π rad = 180°** — an impossible latitude. The simulator had defaulted its simulated position to garbage after the restart. The ephemeris dutifully computed nonsense from it (`tilt=158°`, bogus rise/set). Re-setting a real position (Simulation → Position) restored it, and the values then matched `solunar` exactly (tilt 35.9° = independent Meeus; moonrise/set 01:36/11:32 vs solunar 01:35/11:31).
+
+**Takeaways:**
+- The moon math was never broken — **always re-set the sim position after a sim restart**, or the moon is garbage. A real watch never reports invalid coordinates.
+- Added a guard: `observerLoc()` now **rejects `|lat| > ~90.5°`** → treated as no location → neutral moon instead of nonsense. Cheap defense against a bad/early fix.
+- Debug `println` in a per-frame draw path is invaluable here (lands in `/tmp/monkeydo.log`) but **must be removed after** — this one also called `moonRiseSet()` every frame.
+
 ## Simulator persists app Properties in a `.SET` — new `properties.xml` defaults don't override it (2026-06-07)
 
 **Symptom:** changed the `tz` default in `resources/settings/properties.xml` from `-1` to `2` (Stockholm) to test the offline `applyProperties()` path; rebuilt; the SW field still showed UTC.

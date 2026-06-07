@@ -8,6 +8,16 @@
 
 **Precedence:** native first, then `applyProperties()` overrides — but each property defaults to a **sentinel** (`-1`/`0` = unset), so app settings only override fields the user actually changed. The open decisions resolved as: accent drives the daylight arc too; the **SW** field is the configurable-TZ clock; DST is computed in-code per rule group (no tz database). See [architecture.md](architecture.md#configuration). The rest of this note is the original research that led there.
 
+### Installing the beta on a watch (the working method)
+Beta apps are **hidden from store browse** — *More → Connect IQ Store* in Garmin Connect will never show them ("server connection error" / not found). Install via a **direct deep-link** instead:
+
+- The install URL uses the **store-assigned GUID**, *not* the Manifest AppID. They are different:
+  - Manifest AppID (baked in the `.prg`, device identity): `a3f1c2d4e5b649a78c0d1e2f3a4b5c6d`
+  - Store GUID (the listing/URL id, found at the end of the developer-dashboard URL): `67405e7d-b4b3-4eda-8d91-557439690e35`
+- Working link (bare path, no locale prefix needed): **`https://apps.garmin.com/apps/67405e7d-b4b3-4eda-8d91-557439690e35`**
+- Open it **from a message/email on the phone** and tap **Install** (don't browse to it in-app). Domain must be `apps.garmin.com` (or `apps-test.garmin.com`) — the new `apps-developer.garmin.com` dashboard domain is *not* recognized by the CIQ app. If a tap opens a browser instead of the app, long-press the link in Gmail to force the app handler.
+- This is an Acknowledged-but-unfixed Garmin bug ([beta-install thread](https://forums.garmin.com/developer/connect-iq/i/bug-reports/installing-beta-apps-is-almost-impossible-now)); the deep-link is the community workaround. Garmin Express (the usual fallback) has **no Linux build**, so it's not an option here.
+
 ### Testing app settings in the simulator
 The build emits a valid `bin/moonkey-<device>-settings.json` descriptor, but the sim's **App Settings Editor reads empty under `monkeydo`/`make run`** — those send only the `.prg` and never register the descriptor (the editor reports "No settings file found"). That registration is done by the **VS Code Monkey C extension** (build + Run) / Eclipse plugin, not by the `monkeydo` CLI, and there's no documented CLI command nor a manual "open settings file" option in the editor.
 
