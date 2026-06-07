@@ -1,6 +1,6 @@
 # Moonkey — Connect IQ analog watchface
 
-Garmin Connect IQ watchface ("Moonkey") in Monkey C. Targets AMOLED: `marq2aviator` (default), `fenix843mm`, `fenix847mm`, `marq2`, `venu3`, `epix2pro47mm`, `fr965`. `minApiLevel 4.2.1`. (vívoactive 5 was evaluated and dropped — no system vector fonts for the radial fields, and no `drawScaledBitmap`/native-format buffer for the moon bake.)
+Garmin Connect IQ watchface ("Moonkey") in Monkey C. Targets AMOLED: `marq2aviator` (default), `fenix843mm`, `fenix847mm`, `marq2`, `venu3`, `epix2pro47mm`, `epix2` (epix Gen 2, on CIQ 5.2.0), `fr965`. `minApiLevel 4.2.1`. (vívoactive 5 was evaluated and dropped — no system vector fonts for the radial fields, and no `drawScaledBitmap`/native-format buffer for the moon bake.)
 
 **Full design: [agent_docs/architecture.md](agent_docs/architecture.md).** Profiling & per-frame budget: [agent_docs/perf-analysis.md](agent_docs/perf-analysis.md). Configurability research (accent colour / timezone, sideload constraints): [agent_docs/finding-config.md](agent_docs/finding-config.md).
 

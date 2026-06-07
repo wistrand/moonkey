@@ -4,7 +4,7 @@
 SHELL := /bin/bash
 
 DEVICE  ?= marq2aviator
-DEVICES := marq2aviator marq2 fenix843mm fenix847mm venu3 epix2pro47mm fr965
+DEVICES := marq2aviator marq2 fenix843mm fenix847mm venu3 epix2pro47mm epix2 fr965
 
 CLI      := $(HOME)/go/bin/connect-iq-sdk-manager-cli
 SDK_BIN  := $(shell $(CLI) sdk current-path --bin 2>/dev/null)
