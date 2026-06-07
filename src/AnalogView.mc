@@ -59,7 +59,7 @@ class AnalogView extends WatchUi.WatchFace {
     // Defaults to light gray; user-selectable via the editor's data-colour picker.
     private var _dataColor as Number = 0xAAAAAA; // = light gray (COLOR_LT_GRAY)
     private const RING_R_FRAC = 0.25;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
-    private const MOON_TILT_OFFSET = -1.5707963; // -90 deg: align baked moon orientation with the sky
+    private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
 
     private var _isSleeping as Boolean = false;
     private var _vectorFont as Graphics.VectorFont or Null = null;
