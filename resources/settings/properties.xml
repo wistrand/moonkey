@@ -11,4 +11,6 @@
     <property id="compN" type="number">0</property>
     <property id="compS" type="number">0</property>
     <property id="compNW" type="number">0</property>
+    <property id="compW" type="number">0</property>
+    <property id="compE" type="number">0</property>
 </properties>

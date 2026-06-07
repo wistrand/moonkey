@@ -1,5 +1,15 @@
 # Finding: on-device configurability (accent / data colour / timezone / complications)
 
+> **SUPERSEDED (native editor dropped).** The two-surface design below shipped first, but
+> the **native watch-face editor was later removed** (`watchface-config.xml` +
+> `AnalogWatchFaceDelegate` deleted). Reason: once weather (W) and time (E) became
+> configurable slots whose default is a *composite* (not a `Complications` type), the native
+> picker couldn't represent that default — it only offers "a type" or "cleared" — so W/E
+> couldn't be returned to default, and it forced a `_compNativeOff` precedence layer. Garmin
+> Connect app settings already cover every device (incl. MARQ 2), so **config is now Garmin
+> Connect only**. The research below is kept for the reasoning; the "Option A app settings"
+> half is what remains.
+
 ## What shipped (resolution)
 **Both** the native editor (Option C) **and** app settings (Option A) coexist in one binary, feeding the same view setters:
 

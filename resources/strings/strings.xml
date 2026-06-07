@@ -33,7 +33,12 @@
     <string id="setCompN">N field</string>
     <string id="setCompS">S field</string>
     <string id="setCompNW">NW field (time/position)</string>
+    <string id="setCompW">W field (weather)</string>
+    <string id="setCompE">E field (time)</string>
     <string id="optDefault">Default</string>
+    <string id="optNone">None (off)</string>
+    <string id="optWeather">Weather</string>
+    <string id="optTime">Time</string>
     <string id="colAmber">Amber</string>
     <string id="colWhite">White</string>
     <string id="colRed">Red</string>

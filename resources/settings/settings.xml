@@ -36,6 +36,7 @@
     <setting propertyKey="@Properties.tz" title="@Strings.setTz">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
+            <listEntry value="-2">@Strings.optNone</listEntry>
             <listEntry value="0">@Strings.tzUTC</listEntry>
             <listEntry value="1">@Strings.tzLondon</listEntry>
             <listEntry value="2">@Strings.tzStockholm</listEntry>
@@ -59,6 +60,7 @@
     <setting propertyKey="@Properties.compSE" title="@Strings.setCompSE">
         <settingConfig type="list">
             <listEntry value="0">@Strings.optDefault</listEntry>
+            <listEntry value="-1">@Strings.optNone</listEntry>
             <listEntry value="9">@Strings.cFloors</listEntry>
             <listEntry value="12">@Strings.cAltitude</listEntry>
             <listEntry value="13">@Strings.cPressure</listEntry>
@@ -68,6 +70,7 @@
     <setting propertyKey="@Properties.compNE" title="@Strings.setCompNE">
         <settingConfig type="list">
             <listEntry value="0">@Strings.optDefault</listEntry>
+            <listEntry value="-1">@Strings.optNone</listEntry>
             <listEntry value="8">@Strings.cIntensity</listEntry>
             <listEntry value="3">@Strings.cCalories</listEntry>
             <listEntry value="4">@Strings.cBodyBat</listEntry>
@@ -77,6 +80,7 @@
     <setting propertyKey="@Properties.compN" title="@Strings.setCompN">
         <settingConfig type="list">
             <listEntry value="0">@Strings.optDefault</listEntry>
+            <listEntry value="-1">@Strings.optNone</listEntry>
             <listEntry value="1">@Strings.cHR</listEntry>
             <listEntry value="2">@Strings.cSteps</listEntry>
             <listEntry value="3">@Strings.cCalories</listEntry>
@@ -94,6 +98,7 @@
     <setting propertyKey="@Properties.compS" title="@Strings.setCompS">
         <settingConfig type="list">
             <listEntry value="0">@Strings.optDefault</listEntry>
+            <listEntry value="-1">@Strings.optNone</listEntry>
             <listEntry value="1">@Strings.cHR</listEntry>
             <listEntry value="2">@Strings.cSteps</listEntry>
             <listEntry value="3">@Strings.cCalories</listEntry>
@@ -111,11 +116,30 @@
     <setting propertyKey="@Properties.compNW" title="@Strings.setCompNW">
         <settingConfig type="list">
             <listEntry value="0">@Strings.optDefault</listEntry>
+            <listEntry value="-1">@Strings.optNone</listEntry>
             <listEntry value="15">@Strings.cSunset</listEntry>
             <listEntry value="14">@Strings.cSunrise</listEntry>
             <listEntry value="16">@Strings.cDate</listEntry>
             <listEntry value="17">@Strings.cWeekday</listEntry>
             <listEntry value="18">@Strings.cCalendar</listEntry>
+            <listEntry value="19">@Strings.cBattery</listEntry>
+        </settingConfig>
+    </setting>
+    <setting propertyKey="@Properties.compW" title="@Strings.setCompW">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.optWeather</listEntry>
+            <listEntry value="-1">@Strings.optNone</listEntry>
+            <listEntry value="2">@Strings.cSteps</listEntry>
+            <listEntry value="4">@Strings.cBodyBat</listEntry>
+            <listEntry value="19">@Strings.cBattery</listEntry>
+        </settingConfig>
+    </setting>
+    <setting propertyKey="@Properties.compE" title="@Strings.setCompE">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.optTime</listEntry>
+            <listEntry value="-1">@Strings.optNone</listEntry>
+            <listEntry value="16">@Strings.cDate</listEntry>
+            <listEntry value="1">@Strings.cHR</listEntry>
             <listEntry value="19">@Strings.cBattery</listEntry>
         </settingConfig>
     </setting>

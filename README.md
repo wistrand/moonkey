@@ -22,10 +22,10 @@ data fields.
 - **Hands differentiated by silhouette** — hour is a tapered baton ending in an open ring, minute
   a tapered lance to a point, second a white shaft with an amber tip. The slow hands creep
   smoothly; the seconds tick (1 Hz redraw budget).
-- **Configurable** (native watch-face editor, fenix 8+) — accent colour, data colour, a world
-  **timezone** for one field (17 zones, with automatic DST), and **five complication slots** you
-  pick by tapping the field on the face. Falls back to sensible defaults on devices without the
-  editor.
+- **Configurable** (Garmin Connect app settings) — accent colour, data colour, a world
+  **timezone** for the SW field (17 zones, with automatic DST), and **seven complication slots**
+  (the five data fields plus **weather** and the **clock**): pick a complication per slot, or
+  **hide any field**. Configured from Garmin Connect, on every device.
 - **Data fields** — five of them are the configurable complications above (defaulting to heart
   rate, steps, intensity minutes, floors, and sunrise/sunset); plus date, time, and weather: an
   icon (clear / cloud / rain / snow / storm / fog), temperature, a precipitation-chance bar, and a

@@ -30,10 +30,12 @@ class AnalogView extends WatchUi.WatchFace {
     private var _accentColor as Number = DAYLIGHT_COLOR;
     private var _configTried as Boolean = false;
 
-    // SW radial timezone, selected by repurposing the watch-face-config "style"
-    // selector. _tzStyle indexes these tables (id N in watchface-config.xml ->
-    // index N here). Fixed UTC offsets in hours -- NO DST (CIQ has no tz database).
+    // SW radial timezone, set by the `tz` app-setting. _tzStyle indexes these
+    // tables (tz value N -> index N). Fixed UTC offsets in hours; DST via TZ_DST.
     private var _tzStyle as Number = 0;
+    // SW world-clock hidden (tz app-setting == -2). SW is not a complication slot,
+    // so it has its own off flag rather than living in _compOff.
+    private var _swOff as Boolean = false;
     private const TZ_OFFSET = [0.0, 0.0, 1.0, 3.5, 4.0, 5.5, 9.0, 10.0, -5.0, -8.0,
         -6.0, -3.0, 3.0, 8.0, 7.0, 12.0, -10.0]; // standard-time hours
     private const TZ_LABEL = ["UTC", "LON", "STO", "TEH", "DXB", "IND", "TYO", "SYD", "NYC", "LAX",
@@ -43,23 +45,23 @@ class AnalogView extends WatchUi.WatchFace {
     private const TZ_DST = [0, 1, 1, 0, 0, 0, 0, 3, 2, 2,
         2, 0, 0, 0, 0, 4, 0];
 
-    // Configurable complication slots. The watch-face-config schema requires
-    // integer <complication id>s, so these name the slot indices (id N in
-    // watchface-config.xml == SLOT_* here). _compVal caches each raw value string
-    // (refreshed by the change callback); "" -> built-in fallback.
+    // Configurable complication slots, set via the `compSE..compE` app-settings
+    // (compTypeFromCode). _compVal caches each raw value string (refreshed by the
+    // change callback); "" -> built-in fallback. _compOff[slot] hides the field.
     private const SLOT_SE = 0; // height
     private const SLOT_NE = 1; // energy
     private const SLOT_N = 2;  // body/movement (up)
     private const SLOT_S = 3;  // body/movement (down)
     private const SLOT_NW = 4; // time/position
-    private const SLOT_COUNT = 5;
+    private const SLOT_W = 5;  // left field: weather composite by default, else a complication
+    private const SLOT_E = 6;  // right field: date+time composite by default, else a complication
+    private const SLOT_COUNT = 7;
     private var _compId as Lang.Array = new [SLOT_COUNT];
-    private var _compVal as Lang.Array = ["", "", "", "", ""];
+    private var _compVal as Lang.Array = ["", "", "", "", "", "", ""];
+    // Per-slot "off" marker: the field is hidden entirely (no value, no fallback,
+    // no composite). Distinct from _compId == null, which means "use the default".
+    private var _compOff as Lang.Array = [false, false, false, false, false, false, false];
     private var _compCbRegistered as Boolean = false;
-    // Last-frame geometry, cached so the editor's tap hit-test can locate fields.
-    private var _cx as Number = 0;
-    private var _cy as Number = 0;
-    private var _radius as Number = 0;
 
     // Data colour for the cardinal (N/E/S/W) field readouts and weather glyphs.
     // Defaults to light gray; user-selectable via the editor's data-colour picker.
@@ -111,9 +113,6 @@ class AnalogView extends WatchUi.WatchFace {
         var cx = width / 2;
         var cy = height / 2;
         var radius = (width < height ? width : height) / 2;
-        _cx = cx;
-        _cy = cy;
-        _radius = radius;
 
         // Clear background.
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
@@ -429,41 +428,25 @@ class AnalogView extends WatchUi.WatchFace {
             return;
         }
         _configTried = true;
-        // Defaults preserve the old fields: SE floors, NE intensity, N HR, S steps.
+        applyProperties(); // sets code defaults + Garmin Connect overrides; subscribes.
+    }
+
+    //! Code defaults for the complication slots, re-established at the top of every
+    //! applyProperties so a "Default"/"Weather"/"Time" setting reverts live (not only
+    //! on restart). SE floors, NE intensity, N HR, S steps, NW sunset; W/E null = composite.
+    private function setCompDefaults() as Void {
         if (Toybox has :Complications) {
             _compId[SLOT_SE] = new Complications.Id(Complications.COMPLICATION_TYPE_FLOORS_CLIMBED);
             _compId[SLOT_NE] = new Complications.Id(Complications.COMPLICATION_TYPE_INTENSITY_MINUTES);
             _compId[SLOT_N] = new Complications.Id(Complications.COMPLICATION_TYPE_HEART_RATE);
             _compId[SLOT_S] = new Complications.Id(Complications.COMPLICATION_TYPE_STEPS);
             _compId[SLOT_NW] = new Complications.Id(Complications.COMPLICATION_TYPE_SUNSET);
+            _compId[SLOT_W] = null;
+            _compId[SLOT_E] = null;
         }
-        if (Application has :WatchFaceConfig) {
-            var settings = Application.WatchFaceConfig.getSettings(null);
-            if (settings != null) {
-                var ac = settings.accentColor;
-                if (ac != null && ac.color != null) {
-                    _accentColor = ac.color as Number;
-                }
-                if (settings.styleId != null) {
-                    _tzStyle = settings.styleId as Number;
-                }
-                var dcol = settings.complicationColor;
-                if (dcol != null && dcol.color != null) {
-                    _dataColor = dcol.color as Number;
-                }
-                var cs = settings.complicationSettings;
-                if (cs != null) {
-                    for (var i = 0; i < cs.size(); i++) {
-                        var cid = cs[i].complicationId;
-                        var uid = cs[i].uniqueIdentifier;
-                        if (cid != null && uid != null && uid >= 0 && uid < SLOT_COUNT) {
-                            _compId[uid] = cid;
-                        }
-                    }
-                }
-            }
+        for (var i = 0; i < SLOT_COUNT; i++) {
+            _compOff[i] = false;
         }
-        applyProperties(); // app-settings (Garmin Connect) override; also subscribes
     }
 
     //! Apply Connect IQ app settings (Garmin Connect / sim editor) on top of the
@@ -471,6 +454,13 @@ class AnalogView extends WatchUi.WatchFace {
     //! the native editor drives. Sentinel values (-1 colour/tz, 0 complication)
     //! mean "unset" -> leave the native value. Safe to call repeatedly.
     function applyProperties() as Void {
+        // Reset to code defaults, then let Garmin Connect settings override -- so a
+        // "Default"/"Weather"/"Time"/-1 selection reverts live, not just on restart.
+        _accentColor = DAYLIGHT_COLOR;
+        _dataColor = 0xAAAAAA;
+        _tzStyle = 0;
+        _swOff = false;
+        setCompDefaults();
         if (Toybox.Application has :Properties) {
             try {
                 var ac = Application.Properties.getValue("accentColor");
@@ -482,8 +472,12 @@ class AnalogView extends WatchUi.WatchFace {
                     _dataColor = dc as Number;
                 }
                 var tz = Application.Properties.getValue("tz");
-                if (tz != null && (tz as Number) != -1) {
-                    _tzStyle = tz as Number;
+                if (tz != null) {
+                    var tzc = tz as Number;
+                    _swOff = (tzc == -2);          // -2 = hide the SW world clock
+                    if (tzc != -1 && tzc != -2) {  // -1 = unset (leave native style)
+                        _tzStyle = tzc;
+                    }
                 }
                 if (Toybox has :Complications) {
                     applyCompProp(SLOT_SE, "compSE");
@@ -491,6 +485,8 @@ class AnalogView extends WatchUi.WatchFace {
                     applyCompProp(SLOT_N, "compN");
                     applyCompProp(SLOT_S, "compS");
                     applyCompProp(SLOT_NW, "compNW");
+                    applyCompProp(SLOT_W, "compW");
+                    applyCompProp(SLOT_E, "compE");
                 }
             } catch (ex) {
             }
@@ -502,8 +498,11 @@ class AnalogView extends WatchUi.WatchFace {
     //! Map one complication app-setting (compTypeFromCode codes) onto a slot.
     private function applyCompProp(slot as Number, key as String) as Void {
         var v = Application.Properties.getValue(key);
-        if (v != null && (v as Number) > 0) {
-            var t = compTypeFromCode(v as Number);
+        var code = (v != null) ? (v as Number) : 0;
+        // -1 = off (hide); >0 = a type; 0 = unset -> keep the code default.
+        _compOff[slot] = (code == -1);
+        if (code > 0) {
+            var t = compTypeFromCode(code);
             if (t != null) {
                 _compId[slot] = new Complications.Id(t as Complications.Type);
             }
@@ -546,6 +545,9 @@ class AnalogView extends WatchUi.WatchFace {
             Complications.registerComplicationChangeCallback(method(:onComplicationChange));
             _compCbRegistered = true;
         }
+        // Clear prior subscriptions first so re-applying settings doesn't accumulate
+        // them (slots are rebuilt from scratch on every applyProperties).
+        Complications.unsubscribeFromAllUpdates();
         for (var i = 0; i < SLOT_COUNT; i++) {
             if (_compId[i] != null) {
                 Complications.subscribeToUpdates(_compId[i]);
@@ -592,6 +594,7 @@ class AnalogView extends WatchUi.WatchFace {
         if (t == Complications.COMPLICATION_TYPE_STEPS) { return stepsText(); }
         if (t == Complications.COMPLICATION_TYPE_INTENSITY_MINUTES) { return intensityMinutesText(); }
         if (t == Complications.COMPLICATION_TYPE_FLOORS_CLIMBED) { return floorsText(); }
+        if (t == Complications.COMPLICATION_TYPE_DATE) { return dateText(); }
         var v = _compVal[slot] as String;
         if (v.length() > 0) {
             return v;
@@ -635,11 +638,16 @@ class AnalogView extends WatchUi.WatchFace {
         if (type == Complications.COMPLICATION_TYPE_FLOORS_CLIMBED) { return "floors"; }
         if (type == Complications.COMPLICATION_TYPE_WEEKLY_RUN_DISTANCE) { return "run"; }
         if (type == Complications.COMPLICATION_TYPE_WEEKLY_BIKE_DISTANCE) { return "bike"; }
+        if (type == Complications.COMPLICATION_TYPE_BATTERY) { return "bat"; }
+        if (type == Complications.COMPLICATION_TYPE_HEART_RATE) { return "hr"; }
         return "";
     }
 
     //! Inline "LABEL value" text for a diagonal radial field (label omitted if "").
     private function compInline(slot as Number, fallback as String) as String {
+        if (_compOff[slot]) {
+            return "";
+        }
         var id = _compId[slot];
         if (id == null) {
             return fallback;
@@ -652,6 +660,9 @@ class AnalogView extends WatchUi.WatchFace {
     //! NW field text. Sun types keep the nice dynamic "next event" display
     //! (sunText); other time/position types show the complication value.
     private function nwFieldText() as String {
+        if (_compOff[SLOT_NW]) {
+            return "";
+        }
         var id = _compId[SLOT_NW];
         if (id == null) {
             return sunText();
@@ -673,65 +684,6 @@ class AnalogView extends WatchUi.WatchFace {
             }
         }
         if (hit) {
-            WatchUi.requestUpdate();
-        }
-    }
-
-    //! Set the accent colour and redraw. Called by the watch-face delegate when
-    //! the user edits the accent in the native editor (live preview).
-    function setAccentColor(color as Number) as Void {
-        _accentColor = color;
-        WatchUi.requestUpdate();
-    }
-
-    //! Set the SW-field timezone style and redraw (live editor preview).
-    function setTzStyle(style as Number) as Void {
-        _tzStyle = style;
-        WatchUi.requestUpdate();
-    }
-
-    //! Set the cardinal-field data colour and redraw (live editor preview).
-    function setDataColor(color as Number) as Void {
-        _dataColor = color;
-        WatchUi.requestUpdate();
-    }
-
-    //! Hit-test an editor tap against the four complication fields; returns the
-    //! slot's id (== uniqueIdentifier) for setSelectedComplication, or null.
-    function getTappedComplication(x as Number, y as Number) as Number or Null {
-        var r = _radius;
-        if (r <= 0) {
-            return null;
-        }
-        // [slot, centreX, centreY] for N, S, NE, SE.
-        var fields = [
-            [SLOT_N, _cx, _cy - r * 0.58],
-            [SLOT_S, _cx, _cy + r * 0.60],
-            [SLOT_NE, _cx + r * 0.58, _cy - r * 0.58],
-            [SLOT_SE, _cx + r * 0.58, _cy + r * 0.58],
-            [SLOT_NW, _cx - r * 0.58, _cy - r * 0.58]
-        ];
-        var best = null;
-        var bestD = r * 0.22; // tap tolerance
-        for (var i = 0; i < fields.size(); i++) {
-            var f = fields[i] as Lang.Array;
-            var dx = x - (f[1] as Number);
-            var dy = y - (f[2] as Number);
-            var d = Math.sqrt(dx * dx + dy * dy);
-            if (d < bestD) {
-                bestD = d;
-                best = f[0] as Number;
-            }
-        }
-        return best;
-    }
-
-    //! Set a complication slot (0 SE, 1 NE, 2 N, 3 S) from a live editor edit:
-    //! re-subscribe + redraw.
-    function setComplication(slot as Number, id as Complications.Id) as Void {
-        if (slot >= 0 && slot < SLOT_COUNT) {
-            _compId[slot] = id;
-            subscribeComps();
             WatchUi.requestUpdate();
         }
     }
@@ -876,6 +828,9 @@ class AnalogView extends WatchUi.WatchFace {
     //! SW field: a short timezone label + the time at that zone's fixed UTC
     //! offset (selected via the watch-face-config style; UTC default; no DST).
     private function swFieldText() as String {
+        if (_swOff) {
+            return "";
+        }
         var i = _tzStyle;
         if (i < 0 || i >= TZ_OFFSET.size()) {
             i = 0;
@@ -1105,32 +1060,64 @@ class AnalogView extends WatchUi.WatchFace {
         // Down (S, slot 3): body/movement complication, adornment below.
         drawCardinalComp(dc, cx, cy + off + radius * 0.02, SLOT_S, false);
 
-        // Left: weather icon (top), a precip-chance bar, then the temperature.
+        // Left (W, slot 5): the weather composite by default, else a complication.
         var leftX = cx - off - radius * 0.05;
-        var cond = currentConditions();
-        drawWeatherIcon(dc, leftX, cy - 16, 16);
-        // Thin precip-chance bar between the glyph and the temperature, only when
-        // it's high enough to be worth showing (interactive only).
-        if (!_isSleeping && cond != null && cond.precipitationChance != null
-                && cond.precipitationChance >= 20) {
-            drawPrecipBar(dc, leftX, cy + 3, radius * 0.18, cond.precipitationChance);
+        if (_compOff[SLOT_W]) {
+            // hidden -- draw nothing
+        } else if (_compId[SLOT_W] == null) {
+            // weather icon (top), a precip-chance bar, then the temperature.
+            var cond = currentConditions();
+            drawWeatherIcon(dc, leftX, cy - 16, 16);
+            // Thin precip-chance bar between the glyph and the temperature, only when
+            // it's high enough to be worth showing (interactive only).
+            if (!_isSleeping && cond != null && cond.precipitationChance != null
+                    && cond.precipitationChance >= 20) {
+                drawPrecipBar(dc, leftX, cy + 3, radius * 0.18, cond.precipitationChance);
+            }
+            drawValue(dc, leftX, cy + 22, temperatureText());
+            // Further left: wind barb (interactive only; skip light/calm wind < 4 m/s).
+            if (!_isSleeping && cond != null && cond.windSpeed != null && cond.windBearing != null
+                    && cond.windSpeed >= 4.0) {
+                drawWindBarb(dc, leftX - radius * 0.22, cy - radius * 0.02, radius * 0.11,
+                    cond.windSpeed, cond.windBearing);
+            }
+        } else {
+            drawSideComp(dc, leftX, cy - 16, cy + 22, SLOT_W);
         }
-        drawValue(dc, leftX, cy + 22, temperatureText());
 
-        // Further left: wind barb (interactive only; skip light/calm wind < 4 m/s).
-        if (!_isSleeping && cond != null && cond.windSpeed != null && cond.windBearing != null
-                && cond.windSpeed >= 4.0) {
-            drawWindBarb(dc, leftX - radius * 0.22, cy - radius * 0.02, radius * 0.11,
-                cond.windSpeed, cond.windBearing);
-        }
-
-        // Right: date above the time. The time sits at the same y as the
-        // temperature on the left so the two bottom values line up.
+        // Right (E, slot 6): date above the time by default, else a complication.
+        // The bottom value sits at the temperature's y so the two line up.
         var rightX = cx + off + radius * 0.07;
-        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, dateText(),
-            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        drawValue(dc, rightX, cy + 22, timeOfDayText());
+        if (_compOff[SLOT_E]) {
+            // hidden -- draw nothing
+        } else if (_compId[SLOT_E] == null) {
+            dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, dateText(),
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            drawValue(dc, rightX, cy + 22, timeOfDayText());
+        } else {
+            drawSideComp(dc, rightX, cy - 16, cy + 22, SLOT_E);
+        }
+    }
+
+    //! A side field (W/E) holding a complication: short label on top, value below
+    //! -- mirrors the weather/time composite's two-line layout. The label is empty
+    //! for self-evident types (e.g. date), leaving just the value.
+    private function drawSideComp(dc as Graphics.Dc, x as Numeric, topY as Numeric,
+            valY as Numeric, slot as Number) as Void {
+        var id = _compId[slot];
+        var t = (id != null) ? id.getType() : null;
+        var lbl = cardinalLabel(t);
+        if (lbl.length() > 0) {
+            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+            var just = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+            if (_labelFont != null) {
+                dc.drawText(x, topY, _labelFont, lbl, just);
+            } else {
+                dc.drawText(x, topY, Graphics.FONT_XTINY, lbl, just);
+            }
+        }
+        drawValue(dc, x, valY, slotValue(slot));
     }
 
     //! Draw a single value centered at (x, y).
@@ -1159,6 +1146,9 @@ class AnalogView extends WatchUi.WatchFace {
     //! in always-on, like before), otherwise a tiny-font type label.
     private function drawCardinalComp(dc as Graphics.Dc, x as Numeric, y as Numeric,
             slot as Number, isNorth as Boolean) as Void {
+        if (_compOff[slot]) {
+            return;
+        }
         var textH = dc.getFontHeight(Graphics.FONT_TINY);
         var id = _compId[slot];
         var t = (id != null) ? id.getType() : null;
