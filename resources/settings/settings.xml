@@ -1,0 +1,122 @@
+<settings>
+    <!-- Garmin Connect / sim settings UI. Lives alongside the native watch-face
+         editor (fenix 8+); this is the path that makes editor-less devices (MARQ 2)
+         configurable once installed as a beta/store app. Values map 1:1 to the
+         view's setters via applyProperties. List values: colours = 0xRRGGBB as
+         decimal; tz = TZ_* index; complications = compTypeFromCode codes. -->
+
+    <setting propertyKey="@Properties.accentColor" title="@Strings.setAccent">
+        <settingConfig type="list">
+            <listEntry value="-1">@Strings.optDefault</listEntry>
+            <listEntry value="16755200">@Strings.colAmber</listEntry>
+            <listEntry value="16777215">@Strings.colWhite</listEntry>
+            <listEntry value="16724016">@Strings.colRed</listEntry>
+            <listEntry value="16737792">@Strings.colOrange</listEntry>
+            <listEntry value="16768256">@Strings.colYellow</listEntry>
+            <listEntry value="3394611">@Strings.colGreen</listEntry>
+            <listEntry value="56831">@Strings.colCyan</listEntry>
+            <listEntry value="3381759">@Strings.colBlue</listEntry>
+            <listEntry value="12281599">@Strings.colPurple</listEntry>
+            <listEntry value="16733610">@Strings.colPink</listEntry>
+        </settingConfig>
+    </setting>
+
+    <setting propertyKey="@Properties.dataColor" title="@Strings.setDataColor">
+        <settingConfig type="list">
+            <listEntry value="-1">@Strings.optDefault</listEntry>
+            <listEntry value="11184810">@Strings.colLtGray</listEntry>
+            <listEntry value="13421772">@Strings.colSilver</listEntry>
+            <listEntry value="16777215">@Strings.colWhite</listEntry>
+            <listEntry value="7829367">@Strings.colDkGray</listEntry>
+            <listEntry value="16755200">@Strings.colAmber</listEntry>
+            <listEntry value="56831">@Strings.colCyan</listEntry>
+        </settingConfig>
+    </setting>
+
+    <setting propertyKey="@Properties.tz" title="@Strings.setTz">
+        <settingConfig type="list">
+            <listEntry value="-1">@Strings.optDefault</listEntry>
+            <listEntry value="0">@Strings.tzUTC</listEntry>
+            <listEntry value="1">@Strings.tzLondon</listEntry>
+            <listEntry value="2">@Strings.tzStockholm</listEntry>
+            <listEntry value="3">@Strings.tzTehran</listEntry>
+            <listEntry value="4">@Strings.tzDubai</listEntry>
+            <listEntry value="5">@Strings.tzIndia</listEntry>
+            <listEntry value="6">@Strings.tzTokyo</listEntry>
+            <listEntry value="7">@Strings.tzSydney</listEntry>
+            <listEntry value="8">@Strings.tzNewYork</listEntry>
+            <listEntry value="9">@Strings.tzLosAngeles</listEntry>
+            <listEntry value="10">@Strings.tzChicago</listEntry>
+            <listEntry value="11">@Strings.tzSaoPaulo</listEntry>
+            <listEntry value="12">@Strings.tzMoscow</listEntry>
+            <listEntry value="13">@Strings.tzShanghai</listEntry>
+            <listEntry value="14">@Strings.tzBangkok</listEntry>
+            <listEntry value="15">@Strings.tzAuckland</listEntry>
+            <listEntry value="16">@Strings.tzHonolulu</listEntry>
+        </settingConfig>
+    </setting>
+
+    <setting propertyKey="@Properties.compSE" title="@Strings.setCompSE">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.optDefault</listEntry>
+            <listEntry value="9">@Strings.cFloors</listEntry>
+            <listEntry value="12">@Strings.cAltitude</listEntry>
+            <listEntry value="13">@Strings.cPressure</listEntry>
+        </settingConfig>
+    </setting>
+
+    <setting propertyKey="@Properties.compNE" title="@Strings.setCompNE">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.optDefault</listEntry>
+            <listEntry value="8">@Strings.cIntensity</listEntry>
+            <listEntry value="3">@Strings.cCalories</listEntry>
+            <listEntry value="4">@Strings.cBodyBat</listEntry>
+        </settingConfig>
+    </setting>
+
+    <setting propertyKey="@Properties.compN" title="@Strings.setCompN">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.optDefault</listEntry>
+            <listEntry value="1">@Strings.cHR</listEntry>
+            <listEntry value="2">@Strings.cSteps</listEntry>
+            <listEntry value="3">@Strings.cCalories</listEntry>
+            <listEntry value="4">@Strings.cBodyBat</listEntry>
+            <listEntry value="5">@Strings.cStress</listEntry>
+            <listEntry value="6">@Strings.cPulseOx</listEntry>
+            <listEntry value="7">@Strings.cResp</listEntry>
+            <listEntry value="8">@Strings.cIntensity</listEntry>
+            <listEntry value="9">@Strings.cFloors</listEntry>
+            <listEntry value="10">@Strings.cRun</listEntry>
+            <listEntry value="11">@Strings.cBike</listEntry>
+        </settingConfig>
+    </setting>
+
+    <setting propertyKey="@Properties.compS" title="@Strings.setCompS">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.optDefault</listEntry>
+            <listEntry value="1">@Strings.cHR</listEntry>
+            <listEntry value="2">@Strings.cSteps</listEntry>
+            <listEntry value="3">@Strings.cCalories</listEntry>
+            <listEntry value="4">@Strings.cBodyBat</listEntry>
+            <listEntry value="5">@Strings.cStress</listEntry>
+            <listEntry value="6">@Strings.cPulseOx</listEntry>
+            <listEntry value="7">@Strings.cResp</listEntry>
+            <listEntry value="8">@Strings.cIntensity</listEntry>
+            <listEntry value="9">@Strings.cFloors</listEntry>
+            <listEntry value="10">@Strings.cRun</listEntry>
+            <listEntry value="11">@Strings.cBike</listEntry>
+        </settingConfig>
+    </setting>
+
+    <setting propertyKey="@Properties.compNW" title="@Strings.setCompNW">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.optDefault</listEntry>
+            <listEntry value="15">@Strings.cSunset</listEntry>
+            <listEntry value="14">@Strings.cSunrise</listEntry>
+            <listEntry value="16">@Strings.cDate</listEntry>
+            <listEntry value="17">@Strings.cWeekday</listEntry>
+            <listEntry value="18">@Strings.cCalendar</listEntry>
+            <listEntry value="19">@Strings.cBattery</listEntry>
+        </settingConfig>
+    </setting>
+</settings>

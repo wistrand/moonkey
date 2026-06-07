@@ -81,6 +81,9 @@ class AnalogView extends WatchUi.WatchFace {
     private var _mrsSet as Float = 0.0;
     private var _mrsState as Number = 3;
     private var _mrsBucket as Number = -1;
+    // Observer hemisphere, cached once a location is known (never changes).
+    private var _southern as Boolean = false;
+    private var _southernKnown as Boolean = false;
 
     // Precomputed constant geometry (built once, reused every frame).
     private var _heartHx as Lang.Array or Null = null; // parametric heart curve x
@@ -423,9 +426,9 @@ class AnalogView extends WatchUi.WatchFace {
         return (m == 1 || m == -1) ? e : e * e;
     }
 
-    //! Moonrise/moonset as local clock hours: [rise, set, state]. Single-pass
-    //! (RA/Dec at "now"), ~+/-20-30 min. state: 0 normal, 1 up-all-day, 2
-    //! down-all-day, 3 no location.
+    //! Moonrise/moonset as local clock hours: [rise, set, state]. Iterated
+    //! (RA/Dec re-evaluated at the transit and each crossing), ~few min. state:
+    //! 0 normal, 1 up-all-day, 2 down-all-day, 3 no location.
     private function moonRiseSet() as Lang.Array {
         var loc = null;
         if (Toybox has :Position) {
@@ -441,38 +444,79 @@ class AnalogView extends WatchUi.WatchFace {
             return [0.0, 0.0, 3];
         }
         var ll = loc.toRadians();
-        var latR = ll[0];
         var rad = Math.PI / 180.0;
-        var lonDeg = ll[1] / rad;
-        // Days since J2000. Subtract the epoch (Unix sec of 2000-01-01 12:00 UTC)
-        // as integers first -- adding the ~2.46M Julian Date in 32-bit float would
-        // quantize to ~6-hour steps and throw the Moon position off by tens of deg.
-        var dd = (Time.now().value() - 946728000) / 86400.0;
-        var ecl = (23.4393 - 3.563e-7 * dd) * rad;
-        var rd = moonRaDec(dd, ecl);
-        var ra = rd[0];
-        var dec = rd[1];
-        // Standard altitude for the moon (refraction + ~parallax), ~+0.125 deg.
-        var h0 = 0.125 * rad;
-        var cosH0 = (Math.sin(h0) - Math.sin(latR) * Math.sin(dec)) / (Math.cos(latR) * Math.cos(dec));
+        var latR = ll[0].toFloat(); // Float so the iteration helpers stay Float-typed
+        var lonDeg = (ll[1] / rad).toFloat();
+        var rate = 14.492; // mean lunar diurnal rate, deg/hr
+        // Work in days since J2000 (precise: epoch subtracted as integers first;
+        // a raw ~2.46M JD in 32-bit float quantizes to ~6-hour steps).
+        var ddNow = (Time.now().value() - 946728000) / 86400.0;
+        var h0 = 0.125 * rad; // moon standard altitude (refraction + ~parallax)
+        var p0 = moonEqAt(ddNow, rad);
+        var cosH0 = (Math.sin(h0) - Math.sin(latR) * Math.sin(p0[1])) / (Math.cos(latR) * Math.cos(p0[1]));
         if (cosH0 > 1.0) {
             return [0.0, 0.0, 2]; // never rises
         }
         if (cosH0 < -1.0) {
             return [0.0, 0.0, 1]; // circumpolar, never sets
         }
-        var h0arc = Math.acos(cosH0) / rad; // deg
-        // GMST (deg), reduced mod 360 with whole revolutions dropped from the
-        // integer-day term so the 32-bit float product stays small (else ~0.4 deg).
-        var ddi = dd.toNumber();
-        var gmst = rev(280.46061837 + 0.98564736629 * ddi + 360.98564736629 * (dd - ddi));
-        var haNow = normDeg180((gmst + lonDeg) - ra / rad);
-        var rate = 14.492; // moon apparent diurnal rate, deg/hr
-        var clk = System.getClockTime();
-        var nowH = clk.hour + clk.min / 60.0;
-        var transitH = nowH - haNow / rate;
-        var dH = h0arc / rate;
-        return [wrap24(transitH - dH), wrap24(transitH + dH), 0];
+        // Transit: Newton on the hour angle, re-evaluating the moving position.
+        var tt = ddNow;
+        for (var k = 0; k < 2; k++) {
+            var pk = moonEqAt(tt, rad);
+            var ha = normDeg180((pk[2] + lonDeg) - pk[0]); // deg
+            tt -= (ha / rate) / 24.0; // days
+        }
+        // Rise/set: refine each with the declination at that instant (the moon's
+        // Dec changes fast, so a single pass can drift >30 min near the horizon).
+        var riseDd = horizonCross(tt, -1, latR, h0, rate, rad);
+        var setDd = horizonCross(tt, 1, latR, h0, rate, rad);
+        if (riseDd == null || setDd == null) {
+            return [0.0, 0.0, 1]; // grazing under iteration -> treat as up
+        }
+        var tzo = System.getClockTime().timeZoneOffset; // sec, device clock
+        return [localHourFromDd(riseDd as Float, tzo), localHourFromDd(setDd as Float, tzo), 0];
+    }
+
+    //! Refine a horizon crossing from transit `tt` (days since J2000), direction
+    //! sign (-1 rise, +1 set); null if it stops crossing under iteration.
+    private function horizonCross(tt as Float, sign as Number, latR as Float,
+            h0 as Float, rate as Float, rad as Float) as Float or Null {
+        var u = tt;
+        for (var k = 0; k < 2; k++) {
+            var pk = moonEqAt(u, rad);
+            var c = (Math.sin(h0) - Math.sin(latR) * Math.sin(pk[1])) / (Math.cos(latR) * Math.cos(pk[1]));
+            if (c > 1.0 || c < -1.0) {
+                return null;
+            }
+            u = tt + sign * (Math.acos(c) / rad / rate) / 24.0; // days
+        }
+        return u;
+    }
+
+    //! Moon equatorial position at `ddv` (days since J2000): [RA deg, Dec rad, GMST deg].
+    private function moonEqAt(ddv as Float, rad as Float) as Lang.Array {
+        var ecl = (23.4393 - 3.563e-7 * ddv) * rad;
+        var rd = moonRaDec(ddv, ecl);
+        var ddi = ddv.toNumber();
+        var gmst = rev(280.46061837 + 0.98564736629 * ddi + 360.98564736629 * (ddv - ddi));
+        return [rd[0] / rad, rd[1], gmst];
+    }
+
+    //! Days since J2000 -> local clock hour [0,24). UTC hour-of-day = frac(ddv+0.5);
+    //! tzoSec is the device-clock UTC offset.
+    private function localHourFromDd(ddv as Float, tzoSec as Number) as Float {
+        var f = ddv + 0.5;
+        f -= f.toNumber(); // fractional UTC day [0,1)
+        if (f < 0.0) {
+            f += 1.0;
+        }
+        var h = f * 24.0 + tzoSec / 3600.0;
+        h -= 24.0 * (h / 24.0).toNumber();
+        if (h < 0.0) {
+            h += 24.0;
+        }
+        return h;
     }
 
     private function normDeg180(x as Float) as Float {
@@ -489,12 +533,6 @@ class AnalogView extends WatchUi.WatchFace {
         return v;
     }
 
-    private function wrap24(h as Float) as Float {
-        var x = h;
-        while (x < 0.0) { x += 24.0; }
-        while (x >= 24.0) { x -= 24.0; }
-        return x;
-    }
 
     //! Thin ring hugging the moon showing its above-horizon span (moonrise ->
     //! moonset), with a current-time pointer. Recomputed hourly; interactive only.
@@ -511,7 +549,7 @@ class AnalogView extends WatchUi.WatchFace {
             return; // no location, or moon never up today -> no arc
         }
         var ar = (radius * 0.21).toNumber();
-        dc.setPenWidth(2);
+        dc.setPenWidth(3);
         dc.setColor(MOON_ARC_COLOR, Graphics.COLOR_TRANSPARENT);
         if (_mrsState == 1) {
             dc.drawArc(cx, cy, ar, Graphics.ARC_CLOCKWISE, 0, 360); // up all day
@@ -626,7 +664,77 @@ class AnalogView extends WatchUi.WatchFace {
                 }
             }
         }
+        applyProperties(); // app-settings (Garmin Connect) override; also subscribes
+    }
+
+    //! Apply Connect IQ app settings (Garmin Connect / sim editor) on top of the
+    //! native watch-face-config values, then (re)subscribe. Reuses the same state
+    //! the native editor drives. Sentinel values (-1 colour/tz, 0 complication)
+    //! mean "unset" -> leave the native value. Safe to call repeatedly.
+    function applyProperties() as Void {
+        if (Toybox.Application has :Properties) {
+            try {
+                var ac = Application.Properties.getValue("accentColor");
+                if (ac != null && (ac as Number) != -1) {
+                    _accentColor = ac as Number;
+                }
+                var dc = Application.Properties.getValue("dataColor");
+                if (dc != null && (dc as Number) != -1) {
+                    _dataColor = dc as Number;
+                }
+                var tz = Application.Properties.getValue("tz");
+                if (tz != null && (tz as Number) != -1) {
+                    _tzStyle = tz as Number;
+                }
+                if (Toybox has :Complications) {
+                    applyCompProp(SLOT_SE, "compSE");
+                    applyCompProp(SLOT_NE, "compNE");
+                    applyCompProp(SLOT_N, "compN");
+                    applyCompProp(SLOT_S, "compS");
+                    applyCompProp(SLOT_NW, "compNW");
+                }
+            } catch (ex) {
+            }
+        }
         subscribeComps();
+        WatchUi.requestUpdate();
+    }
+
+    //! Map one complication app-setting (compTypeFromCode codes) onto a slot.
+    private function applyCompProp(slot as Number, key as String) as Void {
+        var v = Application.Properties.getValue(key);
+        if (v != null && (v as Number) > 0) {
+            var t = compTypeFromCode(v as Number);
+            if (t != null) {
+                _compId[slot] = new Complications.Id(t as Complications.Type);
+            }
+        }
+    }
+
+    //! settings.xml complication code -> Complications.Type (null = default/unset).
+    private function compTypeFromCode(code as Number) as Complications.Type or Null {
+        switch (code) {
+            case 1: return Complications.COMPLICATION_TYPE_HEART_RATE;
+            case 2: return Complications.COMPLICATION_TYPE_STEPS;
+            case 3: return Complications.COMPLICATION_TYPE_CALORIES;
+            case 4: return Complications.COMPLICATION_TYPE_BODY_BATTERY;
+            case 5: return Complications.COMPLICATION_TYPE_STRESS;
+            case 6: return Complications.COMPLICATION_TYPE_PULSE_OX;
+            case 7: return Complications.COMPLICATION_TYPE_RESPIRATION_RATE;
+            case 8: return Complications.COMPLICATION_TYPE_INTENSITY_MINUTES;
+            case 9: return Complications.COMPLICATION_TYPE_FLOORS_CLIMBED;
+            case 10: return Complications.COMPLICATION_TYPE_WEEKLY_RUN_DISTANCE;
+            case 11: return Complications.COMPLICATION_TYPE_WEEKLY_BIKE_DISTANCE;
+            case 12: return Complications.COMPLICATION_TYPE_ALTITUDE;
+            case 13: return Complications.COMPLICATION_TYPE_SEA_LEVEL_PRESSURE;
+            case 14: return Complications.COMPLICATION_TYPE_SUNRISE;
+            case 15: return Complications.COMPLICATION_TYPE_SUNSET;
+            case 16: return Complications.COMPLICATION_TYPE_DATE;
+            case 17: return Complications.COMPLICATION_TYPE_WEEKDAY_MONTHDAY;
+            case 18: return Complications.COMPLICATION_TYPE_CALENDAR_EVENTS;
+            case 19: return Complications.COMPLICATION_TYPE_BATTERY;
+        }
+        return null;
     }
 
     //! Subscribe to all configured complications and seed their values. The
@@ -969,40 +1077,45 @@ class AnalogView extends WatchUi.WatchFace {
             i = 0;
         }
         var stdOff = TZ_OFFSET[i] as Float;
-        // DST is judged against the zone's standard-time local date.
+        // DST is judged against the zone's standard-time local date+time, so the
+        // changeover lands near the real ~02:00 transition (not local midnight).
         var ld = Gregorian.utcInfo(new Time.Moment(Time.now().value() + (stdOff * 3600).toNumber()),
             Time.FORMAT_SHORT);
-        var off = stdOff + dstHours(TZ_DST[i] as Number, ld.year, doy(ld.year, ld.month, ld.day));
+        var nowFrac = doy(ld.year, ld.month, ld.day) + (ld.hour + ld.min / 60.0) / 24.0;
+        var off = stdOff + dstHours(TZ_DST[i] as Number, ld.year, nowFrac);
         var info = Gregorian.utcInfo(new Time.Moment(Time.now().value() + (off * 3600).toNumber()),
             Time.FORMAT_SHORT);
         return TZ_LABEL[i] + " " + Lang.format("$1$:$2$",
             [info.hour.format("%02d"), info.min.format("%02d")]);
     }
 
-    //! Hours to add for DST given the zone's rule group and its local date.
+    //! Hours to add for DST given the zone's rule group and the zone's local
+    //! fractional day-of-year (`nowFrac`). Transitions are taken at ~02:00 local
+    //! (the `H` threshold) so the changeover doesn't jump at midnight.
     //! group: 1 EU (last Sun Mar -> last Sun Oct), 2 US (2nd Sun Mar -> 1st Sun
     //! Nov), 3 AU/Sydney (1st Sun Oct -> 1st Sun Apr), 4 NZ (last Sun Sep -> 1st
     //! Sun Apr). 3 and 4 are southern-hemisphere and wrap the year.
-    private function dstHours(group as Number, year as Number, nowDoy as Number) as Float {
+    private function dstHours(group as Number, year as Number, nowFrac as Float) as Float {
+        var h = 2.0 / 24.0; // transition near 02:00 local standard time
         if (group == 1) {
-            var s = doy(year, 3, lastSunday(year, 3));
-            var e = doy(year, 10, lastSunday(year, 10));
-            return (nowDoy >= s && nowDoy < e) ? 1.0 : 0.0;
+            var s = doy(year, 3, lastSunday(year, 3)) + h;
+            var e = doy(year, 10, lastSunday(year, 10)) + h;
+            return (nowFrac >= s && nowFrac < e) ? 1.0 : 0.0;
         }
         if (group == 2) {
-            var s = doy(year, 3, nthSunday(year, 3, 2));
-            var e = doy(year, 11, nthSunday(year, 11, 1));
-            return (nowDoy >= s && nowDoy < e) ? 1.0 : 0.0;
+            var s = doy(year, 3, nthSunday(year, 3, 2)) + h;
+            var e = doy(year, 11, nthSunday(year, 11, 1)) + h;
+            return (nowFrac >= s && nowFrac < e) ? 1.0 : 0.0;
         }
         if (group == 3) {
-            var s = doy(year, 10, nthSunday(year, 10, 1));
-            var e = doy(year, 4, nthSunday(year, 4, 1));
-            return (nowDoy >= s || nowDoy < e) ? 1.0 : 0.0;
+            var s = doy(year, 10, nthSunday(year, 10, 1)) + h;
+            var e = doy(year, 4, nthSunday(year, 4, 1)) + h;
+            return (nowFrac >= s || nowFrac < e) ? 1.0 : 0.0;
         }
         if (group == 4) { // NZ: last Sun Sep -> 1st Sun Apr (southern, wraps)
-            var s = doy(year, 9, lastSunday(year, 9));
-            var e = doy(year, 4, nthSunday(year, 4, 1));
-            return (nowDoy >= s || nowDoy < e) ? 1.0 : 0.0;
+            var s = doy(year, 9, lastSunday(year, 9)) + h;
+            var e = doy(year, 4, nthSunday(year, 4, 1)) + h;
+            return (nowFrac >= s || nowFrac < e) ? 1.0 : 0.0;
         }
         return 0.0;
     }
@@ -1050,11 +1163,14 @@ class AnalogView extends WatchUi.WatchFace {
         return n;
     }
 
-    //! Location for sun calculations: prefer the cached weather observation
-    //! position, fall back to the last known GPS fix (Positioning permission).
     //! True when the observer is in the southern hemisphere (GPS first, weather
-    //! fallback) -- wind barbs mirror their feathers there.
+    //! fallback) -- wind barbs mirror their feathers there. Cached after the first
+    //! known location: the hemisphere never changes within a session, so this must
+    //! not leak a per-frame GPS/weather lookup into the 1 Hz wind-barb draw.
     private function observerSouthern() as Boolean {
+        if (_southernKnown) {
+            return _southern;
+        }
         var loc = null;
         if (Toybox has :Position) {
             var pinfo = Position.getInfo();
@@ -1065,9 +1181,15 @@ class AnalogView extends WatchUi.WatchFace {
         if (loc == null) {
             loc = sunLocation();
         }
-        return (loc != null) && ((loc.toRadians()[0] as Float) < 0.0);
+        if (loc != null) {
+            _southern = (loc.toRadians()[0] as Float) < 0.0;
+            _southernKnown = true;
+        }
+        return _southern;
     }
 
+    //! Location for sun calculations: prefer the cached weather observation
+    //! position, fall back to the last known GPS fix (Positioning permission).
     private function sunLocation() as Position.Location or Null {
         if (Toybox has :Weather) {
             var conditions = Weather.getCurrentConditions();
@@ -1393,12 +1515,11 @@ class AnalogView extends WatchUi.WatchFace {
     private function temperatureText() as String {
         var conditions = currentConditions();
         if (conditions != null && conditions.temperature != null) {
-            var celsius = conditions.temperature;
-            var value = celsius;
+            var value = conditions.temperature.toFloat();
             if (System.getDeviceSettings().temperatureUnits == System.UNIT_STATUTE) {
-                value = (celsius * 9 / 5) + 32;
+                value = value * 9.0 / 5.0 + 32.0; // float math (was integer-divided)
             }
-            return value.format("%d") + "°";
+            return Math.round(value).toNumber().format("%d") + "°"; // nearest, not truncated
         }
         return "--";
     }

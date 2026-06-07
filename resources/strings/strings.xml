@@ -19,4 +19,47 @@
     <string id="tzBangkok">Bangkok</string>
     <string id="tzAuckland">Auckland</string>
     <string id="tzHonolulu">Honolulu</string>
+
+    <!-- Connect IQ app-settings (Garmin Connect) labels. -->
+    <string id="setAccent">Accent Color</string>
+    <string id="setDataColor">Data Color</string>
+    <string id="setTz">Timezone (SW field)</string>
+    <string id="setCompSE">SE field (height)</string>
+    <string id="setCompNE">NE field (energy)</string>
+    <string id="setCompN">N field</string>
+    <string id="setCompS">S field</string>
+    <string id="setCompNW">NW field (time/position)</string>
+    <string id="optDefault">Default</string>
+    <string id="colAmber">Amber</string>
+    <string id="colWhite">White</string>
+    <string id="colRed">Red</string>
+    <string id="colOrange">Orange</string>
+    <string id="colYellow">Yellow</string>
+    <string id="colGreen">Green</string>
+    <string id="colCyan">Cyan</string>
+    <string id="colBlue">Blue</string>
+    <string id="colPurple">Purple</string>
+    <string id="colPink">Pink</string>
+    <string id="colLtGray">Light Gray</string>
+    <string id="colSilver">Silver</string>
+    <string id="colDkGray">Dark Gray</string>
+    <string id="cHR">Heart Rate</string>
+    <string id="cSteps">Steps</string>
+    <string id="cCalories">Calories</string>
+    <string id="cBodyBat">Body Battery</string>
+    <string id="cStress">Stress</string>
+    <string id="cPulseOx">Pulse Ox</string>
+    <string id="cResp">Respiration</string>
+    <string id="cIntensity">Intensity Minutes</string>
+    <string id="cFloors">Floors Climbed</string>
+    <string id="cRun">Weekly Run Dist</string>
+    <string id="cBike">Weekly Bike Dist</string>
+    <string id="cAltitude">Altitude</string>
+    <string id="cPressure">Sea Level Pressure</string>
+    <string id="cSunrise">Sunrise</string>
+    <string id="cSunset">Sunset</string>
+    <string id="cDate">Date</string>
+    <string id="cWeekday">Weekday + Date</string>
+    <string id="cCalendar">Calendar Events</string>
+    <string id="cBattery">Battery</string>
 </strings>
