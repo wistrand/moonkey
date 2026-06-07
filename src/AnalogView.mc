@@ -563,7 +563,9 @@ class AnalogView extends WatchUi.WatchFace {
             var c = Complications.getComplication(id);
             if (c != null && c.value != null) {
                 var v = c.value;
-                var vs = (v instanceof Lang.Float || v instanceof Lang.Double) ? v.format("%d") : v.toString();
+                // .toNumber() first: format("%d") on a Float is unreliable and
+                // mangles large values.
+                var vs = (v instanceof Lang.Float || v instanceof Lang.Double) ? v.toNumber().format("%d") : v.toString();
                 var t = id.getType();
                 var pct = t == Complications.COMPLICATION_TYPE_BATTERY
                     || t == Complications.COMPLICATION_TYPE_BODY_BATTERY
@@ -578,19 +580,22 @@ class AnalogView extends WatchUi.WatchFace {
         return "";
     }
 
-    //! Display value for a slot: the complication value, or a built-in fallback
-    //! for the well-known types (HR/steps/intensity/floors), else "--".
+    //! Display value for a slot. The well-known activity types are read from the
+    //! on-device API directly (the subscribed complication value is redundant for
+    //! them and unreliable for STEPS -- the complication reports the count scaled
+    //! to thousands as a Float, e.g. 12.405 for 12405, which truncates to "12").
+    //! Everything else uses the subscribed complication value, else "--".
     private function slotValue(slot as Number) as String {
-        var v = _compVal[slot] as String;
-        if (v.length() > 0) {
-            return v;
-        }
         var id = _compId[slot];
         var t = (id != null) ? id.getType() : null;
         if (t == Complications.COMPLICATION_TYPE_HEART_RATE) { return heartRateText(); }
         if (t == Complications.COMPLICATION_TYPE_STEPS) { return stepsText(); }
         if (t == Complications.COMPLICATION_TYPE_INTENSITY_MINUTES) { return intensityMinutesText(); }
         if (t == Complications.COMPLICATION_TYPE_FLOORS_CLIMBED) { return floorsText(); }
+        var v = _compVal[slot] as String;
+        if (v.length() > 0) {
+            return v;
+        }
         return "--";
     }
 

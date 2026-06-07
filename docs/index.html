@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moonkey — a photographic Moon watch face for Garmin</title>
+<meta name="description" content="An analog Connect IQ watch face for AMOLED Garmin watches, built around a real photograph of the Moon — phase-shaded and tilted to match your sky.">
+<meta property="og:title" content="Moonkey">
+<meta property="og:description" content="A photographic Moon at the center of an analog face — phase-shaded and tilted to match your sky.">
+<meta property="og:image" content="snap.png">
+<meta property="og:type" content="website">
+<style>
+  :root{
+    --bg:#000; --panel:#0d0d0f; --line:#1d1d22;
+    --ink:#f3f3f3; --muted:#9a9aa2; --amber:#ffaa00; --amber-dim:#3a2c08;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--amber); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1000px; margin:0 auto; padding:0 24px}
+  .btn{
+    display:inline-block; padding:12px 22px; border-radius:999px; font-weight:600;
+    border:1px solid var(--amber); color:var(--amber); transition:.15s;
+  }
+  .btn:hover{background:var(--amber); color:#000; text-decoration:none}
+  .btn.solid{background:var(--amber); color:#000; border-color:var(--amber)}
+  .btn.ghost{border-color:var(--line); color:var(--muted)}
+  .btn.ghost:hover{background:var(--panel); color:var(--ink); border-color:var(--line)}
+
+  /* hero */
+  header.hero{
+    padding:72px 0 40px; text-align:center;
+    background:radial-gradient(1200px 480px at 50% -10%, #14110a 0%, #000 60%);
+  }
+  .hero h1{
+    margin:0; font-size:clamp(40px,8vw,72px); letter-spacing:-.02em; font-weight:800;
+  }
+  .hero .tag{
+    margin:14px auto 0; max-width:620px; color:var(--muted); font-size:clamp(16px,2.4vw,20px);
+  }
+  .shot{
+    width:300px; height:300px; max-width:80vw; border-radius:50%;
+    margin:36px auto 8px; display:block;
+    box-shadow:0 0 0 1px var(--line), 0 24px 70px rgba(255,170,0,.10), 0 10px 40px rgba(0,0,0,.6);
+  }
+  .cta{margin-top:26px; display:flex; gap:14px; justify-content:center; flex-wrap:wrap}
+  .cta .note{flex-basis:100%; color:var(--muted); font-size:13px; margin-top:6px}
+
+  /* sections */
+  section{padding:56px 0; border-top:1px solid var(--line)}
+  h2{font-size:clamp(24px,4vw,32px); letter-spacing:-.01em; margin:0 0 8px}
+  .lead{color:var(--muted); margin:0 0 28px; max-width:680px}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px 22px;
+  }
+  .card h3{margin:0 0 6px; font-size:17px}
+  .card h3 .dot{color:var(--amber)}
+  .card p{margin:0; color:var(--muted); font-size:14.5px}
+
+  .chips{display:flex; flex-wrap:wrap; gap:10px; margin-top:6px}
+  .chip{
+    border:1px solid var(--line); background:var(--panel); color:var(--muted);
+    padding:7px 14px; border-radius:999px; font-size:14px;
+  }
+
+  footer{padding:48px 0 64px; border-top:1px solid var(--line); color:var(--muted); font-size:14px}
+  footer .row{display:flex; gap:18px; flex-wrap:wrap; align-items:center; justify-content:space-between}
+  .small{color:var(--muted); font-size:13px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>Moonkey</h1>
+    <p class="tag">A photographic Moon at the center of an analog face — phase-shaded and tilted to match your sky.</p>
+    <img class="shot" src="snap.png" width="300" height="300" alt="Moonkey watch face: a photographic Moon at the center of an analog dial.">
+    <div class="cta">
+      <a class="btn ghost" href="https://github.com/wistrand/moonkey">View on GitHub</a>
+      <a class="btn solid" href="#features">See the features</a>
+      <span class="note">Connect IQ Store listing coming soon — for AMOLED Garmin watches.</span>
+    </div>
+  </div>
+</header>
+
+<section id="about">
+  <div class="wrap">
+    <h2>The real Moon, on your wrist</h2>
+    <p class="lead">Moonkey is built around a real photograph of the Moon, shaded for tonight's exact phase and rotated to the true inclination it shows in <em>your</em> sky — the terminator tilts the way the real Moon does for your latitude and the time of night, not as a generic icon. A thin ring hugging the disc traces the Moon's time above the horizon, from moonrise to moonset. All of it is computed on the watch, no internet required, and tracks published almanacs to within a few minutes.</p>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Features</h2>
+    <p class="lead">Everything an analog face should be, with an astronomer's attention to the sky above it.</p>
+    <div class="grid">
+      <div class="card"><h3><span class="dot">●</span> Photographic Moon</h3><p>Soft-terminator shaded for the live phase and tilted to your sky's true inclination (bright-limb position angle minus parallactic angle).</p></div>
+      <div class="card"><h3><span class="dot">●</span> Moonrise / moonset arc</h3><p>A thin ring around the disc shows the Moon's span above the horizon for your location.</p></div>
+      <div class="card"><h3><span class="dot">●</span> 24-hour day/night ring</h3><p>Midnight at top, noon at bottom; an amber arc spans daylight (sunrise to sunset) with a current-time pointer and a sun ring that brightens toward solar noon.</p></div>
+      <div class="card"><h3><span class="dot">●</span> Hands by silhouette</h3><p>Hour is a tapered baton ending in an open ring, minute a tapered lance, second a white shaft tipped in amber — told apart by shape, not just length.</p></div>
+      <div class="card"><h3><span class="dot">●</span> Weather at a glance</h3><p>A clear / cloud / rain / snow / storm / fog glyph, temperature, a precipitation-chance bar, and a meteorological wind barb.</p></div>
+      <div class="card"><h3><span class="dot">●</span> Always-on aware</h3><p>Keeps its colors in low-power mode but dims the battery-hungry detail to protect the display.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="config">
+  <div class="wrap">
+    <h2>Make it yours</h2>
+    <p class="lead">Five complication slots plus colors and a world clock — configure on the watch (fēnix 8 / MARQ 2) by tapping the field, or from Garmin Connect.</p>
+    <div class="grid">
+      <div class="card"><h3>Colors</h3><p>Pick an accent color and a separate data color for the readouts.</p></div>
+      <div class="card"><h3>World clock</h3><p>A second timezone for the corner field, with automatic daylight saving.</p></div>
+      <div class="card"><h3>Complications</h3><p>Five fields you choose: heart rate, steps, calories, body battery, intensity, floors, altitude, sunrise/sunset, and more.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="devices">
+  <div class="wrap">
+    <h2>Compatible devices</h2>
+    <p class="lead">AMOLED Garmin watches, minimum Connect IQ 4.2.1.</p>
+    <div class="chips">
+      <span class="chip">fēnix 8 (43mm)</span>
+      <span class="chip">fēnix 8 (47/51mm)</span>
+      <span class="chip">epix Pro (47mm)</span>
+      <span class="chip">epix (Gen 2)</span>
+      <span class="chip">MARQ 2</span>
+      <span class="chip">MARQ 2 Aviator</span>
+      <span class="chip">Venu 3</span>
+      <span class="chip">Forerunner 965</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap row">
+    <div>Moonkey — an open-source Connect IQ watch face. <a href="https://github.com/wistrand/moonkey">github.com/wistrand/moonkey</a></div>
+    <div class="small">Garmin, Connect IQ, fēnix, epix, MARQ, Venu and Forerunner are trademarks of Garmin Ltd. Not affiliated with Garmin.</div>
+  </div>
+</footer>
+
+</body>
+</html>
