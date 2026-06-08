@@ -348,7 +348,7 @@ class AnalogView extends WatchUi.WatchFace {
         }
         var ar = (radius * 0.22).toNumber();
         dc.setPenWidth(3);
-        dc.setColor(_accentColor, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         if (_mrsState == 1) {
             dc.drawArc(cx, cy, ar, Graphics.ARC_CLOCKWISE, 0, 360); // up all day
         } else {
