@@ -16,7 +16,7 @@ Garmin Connect IQ watchface ("Moonkey") in Monkey C. Targets AMOLED: `marq2aviat
 - `src/Astro.mc` — `module Astro`: pure moon/sun ephemeris (Meeus ch.47 + Schlyter sun), bright-limb tilt, iterated moonrise/set. The view passes location/time; verified against `solunar`.
 - `src/CalendarMath.mc` — `module Cal`: pure Gregorian/DST date math (weekday/Sunday/doy/`dstHours`).
 - `resources/` — strings + launcher icon + moon photo. `bin/` — built `.prg`s (one per device). `agent_docs/` — design + research notes.
-- `setup-connectiq.sh` — one-time toolchain setup. `install.sh [device]` — sideload to a watch over MTP; `uninstall.sh [device|all]` — remove the sideloaded `.prg`(s) over MTP (the inverse; default removes all `moonkey-*.prg`). `Makefile` — `make run`/`all`/`install`/`uninstall`/`package`/`moon` (regenerates the moon bitmap from `data/moon-raw.jpg`).
+- `setup-connectiq.sh` — one-time toolchain setup. `install.sh [device]` — sideload to a watch over MTP; `uninstall.sh [device|all]` — remove the sideloaded `.prg`(s) over MTP (the inverse; default removes all `moonkey-*.prg`). `screenshot.sh [out.png]` — grab the sim window. `Makefile` — `make run`/`all`/`install`/`uninstall`/`package`/`moon` (regenerates the moon bitmap from `data/moon-raw.jpg`).
 
 ## Build & run
 SDK is managed by `~/go/bin/connect-iq-sdk-manager-cli` (open-source replacement for the GUI SDK Manager). Dev key: `~/.connectiq/developer_key.der`.
@@ -29,6 +29,7 @@ monkeydo bin/moonkey-marq2aviator.prg marq2aviator # load/reload app
 ```
 
 - Simulator on Wayland: launch with `GDK_BACKEND=x11`. `monkeydo` cannot switch the device of a running sim — kill and relaunch the sim to change device.
+- **Screenshots:** use `./screenshot.sh [out.png]`, not full-screen capture. GNOME/Wayland hides window geometry, but the sim is an XWayland client, so the script finds its X11 window by title (`xprop` → `WM_NAME` "CIQ Simulator") and grabs that window by id (`import -window`). Captures the window (not the screen) regardless of where it sits; crop the watch face *within* the result. No extra packages.
 - Devices must be downloaded **with fonts** (`device download -d <id> --include-fonts`) or the sim segfaults rendering text.
 - Set HR in the sim via **Simulation → Health Monitoring**; weather/GPS via the Simulation menu (else sun/weather fields show `--`).
 
