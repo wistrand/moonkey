@@ -76,10 +76,23 @@ class AnalogView extends WatchUi.WatchFace {
     private var _moonImage as Number = 0;
     // E field "Persian Solar" mode (compE sentinel 100): Jalali date + Tehran time.
     private var _ePersian as Boolean = false;
+    // E field "Date + Weekday" mode (compE sentinel 103): date over 3-letter weekday.
+    private var _eDateWeekday as Boolean = false;
+    // S field "Persian Solar" (compS sentinel 100): same, but both rows small font.
+    private var _sPersian as Boolean = false;
     // N field "Show text" mode (compN sentinel 101): draws the `text` setting,
     // no heart icon or label. _text is the user's string.
     private var _nText as Boolean = false;
     private var _text as String = "";
+    // N/S "Weather" mode (compN/compS sentinel 102): inline weather icon + temp on
+    // one line, no barb/label. Per-slot (only N/S are ever set true).
+    private var _compWeather as Lang.Array = [false, false, false, false, false, false, false];
+    // "Skip labels" (skipLabels setting): drop the dark-grey label on a W/E
+    // complication and put the lone value on the watch's horizontal midline.
+    private var _skipLabels as Boolean = false;
+    // W field "Steps + HR" mode (compW sentinel 104): two lines, each value
+    // prefixed by a small icon (footprints / heart).
+    private var _wStepsHr as Boolean = false;
     private const RING_R_FRAC = 0.27;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
     private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
 
@@ -490,10 +503,16 @@ class AnalogView extends WatchUi.WatchFace {
         _moonArcHidden = false;
         _moonImage = 0;
         _ePersian = false;
+        _eDateWeekday = false;
+        _wStepsHr = false;
+        _sPersian = false;
         _nText = false;
         _text = "";
+        _compWeather[SLOT_N] = false;
+        _compWeather[SLOT_S] = false;
         _tzStyle = 0;
         _swOff = false;
+        _skipLabels = false;
         setCompDefaults();
         if (Toybox.Application has :Properties) {
             try {
@@ -530,18 +549,29 @@ class AnalogView extends WatchUi.WatchFace {
                 if (tx != null) {
                     _text = tx as String;
                 }
+                var sl = Application.Properties.getValue("skipLabels");
+                if (sl != null) {
+                    _skipLabels = sl as Boolean;
+                }
                 if (Toybox has :Complications) {
                     applyCompProp(SLOT_SE, "compSE");
                     applyCompProp(SLOT_NE, "compNE");
                     applyCompProp(SLOT_N, "compN");
                     var cn = Application.Properties.getValue("compN");
-                    _nText = (cn != null && (cn as Number) == 101); // 101 = show text
+                    _nText = (cn != null && (cn as Number) == 101);             // 101 = show text
+                    _compWeather[SLOT_N] = (cn != null && (cn as Number) == 102); // 102 = weather
                     applyCompProp(SLOT_S, "compS");
+                    var cs = Application.Properties.getValue("compS");
+                    _compWeather[SLOT_S] = (cs != null && (cs as Number) == 102);
+                    _sPersian = (cs != null && (cs as Number) == 100); // 100 = Persian Solar
                     applyCompProp(SLOT_NW, "compNW");
                     applyCompProp(SLOT_W, "compW");
+                    var cw = Application.Properties.getValue("compW");
+                    _wStepsHr = (cw != null && (cw as Number) == 104); // 104 = steps + HR
                     applyCompProp(SLOT_E, "compE");
                     var ce = Application.Properties.getValue("compE");
-                    _ePersian = (ce != null && (ce as Number) == 100); // 100 = Persian Solar
+                    _ePersian = (ce != null && (ce as Number) == 100);     // 100 = Persian Solar
+                    _eDateWeekday = (ce != null && (ce as Number) == 103); // 103 = date + weekday
                 }
             } catch (ex) {
             }
@@ -1131,6 +1161,10 @@ class AnalogView extends WatchUi.WatchFace {
         var leftX = cx - off - radius * 0.05;
         if (_compOff[SLOT_W]) {
             // hidden -- draw nothing
+        } else if (_wStepsHr) {
+            // Two lines: steps (footprints) over heart rate (heart), icons and
+            // values each vertically aligned.
+            drawStepsHr(dc, leftX, cy);
         } else if (_compId[SLOT_W] == null) {
             // weather icon (top), a precip-chance bar, then the temperature.
             var cond = currentConditions();
@@ -1149,7 +1183,7 @@ class AnalogView extends WatchUi.WatchFace {
                     cond.windSpeed, cond.windBearing);
             }
         } else {
-            drawSideComp(dc, leftX, cy - 16, cy + 22, SLOT_W);
+            drawSideComp(dc, leftX, cy - 16, _skipLabels ? cy : cy + 22, SLOT_W);
         }
 
         // Right (E, slot 6): date above the time by default, else a complication.
@@ -1163,13 +1197,27 @@ class AnalogView extends WatchUi.WatchFace {
             dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, persianDateText(),
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             drawValue(dc, rightX, cy + 22, tehranTimeText());
+        } else if (_eDateWeekday) {
+            // Date over the 3-letter weekday.
+            dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
+            var j = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+            if (_wStepsHr) {
+                // W is the small two-line steps+HR composite: match it so E and W
+                // align -- both lines small, persian-style padding (fh*0.5).
+                var dy = dc.getFontHeight(Graphics.FONT_XTINY) * 0.5;
+                dc.drawText(rightX, cy - dy, Graphics.FONT_XTINY, dateText(), j);
+                dc.drawText(rightX, cy + dy, Graphics.FONT_XTINY, weekdayText(), j);
+            } else {
+                dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, dateText(), j);
+                drawValue(dc, rightX, cy + 22, weekdayText());
+            }
         } else if (_compId[SLOT_E] == null) {
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
             dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, dateText(),
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             drawValue(dc, rightX, cy + 22, timeOfDayText());
         } else {
-            drawSideComp(dc, rightX, cy - 16, cy + 22, SLOT_E);
+            drawSideComp(dc, rightX, cy - 16, _skipLabels ? cy : cy + 22, SLOT_E);
         }
     }
 
@@ -1181,7 +1229,7 @@ class AnalogView extends WatchUi.WatchFace {
         var id = _compId[slot];
         var t = (id != null) ? id.getType() : null;
         var lbl = cardinalLabel(t);
-        if (lbl.length() > 0) {
+        if (!_skipLabels && lbl.length() > 0) {
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
             var just = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
             if (_labelFont != null) {
@@ -1242,12 +1290,27 @@ class AnalogView extends WatchUi.WatchFace {
         if (_compOff[slot]) {
             return;
         }
-        var textH = dc.getFontHeight(Graphics.FONT_TINY);
+        // Compact look: when W and E are both two-line composites, shrink N/S to
+        // the small font too so all four data fields match.
+        var cardFont = (_wStepsHr && _eDateWeekday) ? Graphics.FONT_XTINY : Graphics.FONT_TINY;
+        var textH = dc.getFontHeight(cardFont);
         if (slot == SLOT_N && _nText) {
             // "Show text": just the user's string, nudged up a bit; no value/heart/label.
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(x, y - textH * 0.25, Graphics.FONT_TINY, _text,
+            dc.drawText(x, y - textH * 0.25, cardFont, _text,
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            return;
+        }
+        if (_compWeather[slot]) {
+            // "Weather": icon + temperature on one line, no wind barb, no label;
+            // nudged a line clear of centre (up on N, down on S).
+            drawWeatherInline(dc, x, y + (isNorth ? -textH * 0.6 : textH * 0.6), textH, cardFont);
+            return;
+        }
+        if (slot == SLOT_S && _sPersian) {
+            // "Persian Solar" at S: Jalali date over Tehran time, both small font,
+            // a line below centre.
+            drawPersianSmall(dc, x, y + textH * 0.6);
             return;
         }
         var id = _compId[slot];
@@ -1266,7 +1329,7 @@ class AnalogView extends WatchUi.WatchFace {
         }
 
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, vy-vvy, Graphics.FONT_TINY, slotValue(slot),
+        dc.drawText(x, vy-vvy, cardFont, slotValue(slot),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         if (t == Complications.COMPLICATION_TYPE_HEART_RATE) {
@@ -1285,6 +1348,50 @@ class AnalogView extends WatchUi.WatchFace {
                 dc.drawText(x, ly, Graphics.FONT_XTINY, cardinalLabel(t), just);
             }
         }
+    }
+
+    //! Inline weather for an N/S slot: the weather icon and temperature on one line,
+    //! centred at (x, y), no wind barb or label. Icon sized to the FONT_TINY line.
+    private function drawWeatherInline(dc as Graphics.Dc, x as Numeric, y as Numeric,
+            textH as Numeric, font as Graphics.FontType) as Void {
+        var temp = temperatureText();
+        var r = (textH * 0.45).toNumber();
+        var gap = 4;
+        var tw = dc.getTextWidthInPixels(temp, font);
+        var left = x - (2 * r + gap + tw) / 2;
+        drawWeatherIcon(dc, left + r, y, r);
+        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(left + 2 * r + gap, y, font, temp,
+            Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    //! Persian Solar for the S slot: Jalali date over Tehran time, BOTH in the
+    //! smaller font (FONT_XTINY), stacked around (x, y).
+    private function drawPersianSmall(dc as Graphics.Dc, x as Numeric, y as Numeric) as Void {
+        var fh = dc.getFontHeight(Graphics.FONT_XTINY);
+        var just = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x, y - fh * 0.5, Graphics.FONT_XTINY, persianDateText(), just);
+        dc.drawText(x, y + fh * 0.5, Graphics.FONT_XTINY, tehranTimeText(), just);
+    }
+
+    //! W "Steps + HR" composite: heart rate (top) over steps (bottom), two
+    //! small-font lines with persian-style padding (fh*0.5), nudged a bit left.
+    //! HR is a centred value with a small heart just to its left; steps is a
+    //! plain centred value.
+    private function drawStepsHr(dc as Graphics.Dc, x as Numeric, cy as Numeric) as Void {
+        var steps = stepsText();
+        var hr = heartRateText();
+        var fh = dc.getFontHeight(Graphics.FONT_XTINY);
+        var dy = fh * 0.5;
+        var lx = x - 8;   // nudge the whole composite a bit left
+        var ctr = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(lx, cy - dy, Graphics.FONT_XTINY, hr, ctr);
+        dc.drawText(lx, cy + dy, Graphics.FONT_XTINY, steps, ctr);
+        var hsize = fh * 0.6;
+        var hw = dc.getTextWidthInPixels(hr, Graphics.FONT_XTINY);
+        drawHeart(dc, lx - hw / 2.0 - 4 - hsize / 2.0, cy - dy, hsize);
     }
 
     //! Fill a heart of the given width centered at (cx, cy) using the classic
@@ -1372,6 +1479,13 @@ class AnalogView extends WatchUi.WatchFace {
     private function dateText() as String {
         var info = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
         return Lang.format("$1$ $2$", [info.day.format("%02d"), info.month]);
+    }
+
+    //! Today's weekday as a 3-letter English abbreviation (locale-independent via Cal).
+    private function weekdayText() as String {
+        var info = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
+        var names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        return names[Cal.weekday(info.year, info.month, info.day)] as String;
     }
 
     //! Look up the cached current weather conditions, guarding devices without

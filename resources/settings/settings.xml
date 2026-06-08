@@ -54,6 +54,9 @@
     <setting propertyKey="@Properties.text" title="@Strings.setText">
         <settingConfig type="alphaNumeric" />
     </setting>
+    <setting propertyKey="@Properties.skipLabels" title="@Strings.setSkipLabels">
+        <settingConfig type="boolean" />
+    </setting>
 
     <setting propertyKey="@Properties.tz" title="@Strings.setTz">
         <settingConfig type="list">
@@ -104,6 +107,7 @@
             <listEntry value="0">@Strings.optDefault</listEntry>
             <listEntry value="-1">@Strings.optNone</listEntry>
             <listEntry value="101">@Strings.optText</listEntry>
+            <listEntry value="102">@Strings.optWeather</listEntry>
             <listEntry value="1">@Strings.cHR</listEntry>
             <listEntry value="2">@Strings.cSteps</listEntry>
             <listEntry value="3">@Strings.cCalories</listEntry>
@@ -122,6 +126,8 @@
         <settingConfig type="list">
             <listEntry value="0">@Strings.optDefault</listEntry>
             <listEntry value="-1">@Strings.optNone</listEntry>
+            <listEntry value="100">@Strings.optPersian</listEntry>
+            <listEntry value="102">@Strings.optWeather</listEntry>
             <listEntry value="1">@Strings.cHR</listEntry>
             <listEntry value="2">@Strings.cSteps</listEntry>
             <listEntry value="3">@Strings.cCalories</listEntry>
@@ -152,6 +158,7 @@
         <settingConfig type="list">
             <listEntry value="0">@Strings.optWeather</listEntry>
             <listEntry value="-1">@Strings.optNone</listEntry>
+            <listEntry value="104">@Strings.optStepsHr</listEntry>
             <listEntry value="2">@Strings.cSteps</listEntry>
             <listEntry value="4">@Strings.cBodyBat</listEntry>
             <listEntry value="19">@Strings.cBattery</listEntry>
@@ -162,6 +169,7 @@
             <listEntry value="0">@Strings.optTime</listEntry>
             <listEntry value="-1">@Strings.optNone</listEntry>
             <listEntry value="100">@Strings.optPersian</listEntry>
+            <listEntry value="103">@Strings.optDateWeekday</listEntry>
             <listEntry value="16">@Strings.cDate</listEntry>
             <listEntry value="1">@Strings.cHR</listEntry>
             <listEntry value="19">@Strings.cBattery</listEntry>

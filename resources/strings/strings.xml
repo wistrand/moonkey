@@ -30,6 +30,7 @@
     <string id="setMoonArc">Moon Arc Color</string>
     <string id="setMoonImage">Moon Image</string>
     <string id="setText">Custom Text (N field)</string>
+    <string id="setSkipLabels">Skip E/W Labels</string>
     <string id="setTz">Timezone (SW field)</string>
     <string id="setCompSE">SE field (height)</string>
     <string id="setCompNE">NE field (energy)</string>
@@ -50,6 +51,8 @@
     <string id="optTime">Time</string>
     <string id="optPersian">Persian Solar</string>
     <string id="optText">Show Text</string>
+    <string id="optDateWeekday">Date + Weekday</string>
+    <string id="optStepsHr">Steps + HR</string>
     <string id="colAmber">Amber</string>
     <string id="colWhite">White</string>
     <string id="colRed">Red</string>
