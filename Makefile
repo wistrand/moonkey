@@ -48,10 +48,8 @@ sim-restart: ## Restart the simulator (needed to switch DEVICE)
 	-@pkill -f 'bin/simulato[r]' 2>/dev/null; sleep 1
 	@setsid env GDK_BACKEND=x11 $(SIM) >/tmp/ciqsim.log 2>&1 < /dev/null & echo "simulator restarted"
 
-run: build sim ## Build DEVICE and load it into the simulator (returns; logs to /tmp/monkeydo.log)
-	@for i in $$(seq 1 60); do ss -ltn 2>/dev/null | grep -q ':1234' && break; sleep 0.2; done
-	@setsid $(MONKEYDO) $(BIN)/moonkey-$(DEVICE).prg $(DEVICE) >/tmp/monkeydo.log 2>&1 < /dev/null & \
-	  echo "loaded $(DEVICE) into simulator (logs: /tmp/monkeydo.log)"
+run: ## Build DEVICE + load into the sim. Override settings via env vars named after properties.xml ids, e.g. `moonImage=1 make run`, `tz=2 moonImage=2 make run`.
+	@./simrun.sh $(DEVICE)
 
 shot: ## Build DEVICE, (re)launch sim, wait for the face to render, screenshot -> bin/shot-<device>.png
 	@mkdir -p $(BIN)

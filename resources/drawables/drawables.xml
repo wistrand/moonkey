@@ -1,4 +1,6 @@
 <drawables>
     <bitmap id="LauncherIcon" filename="launcher_icon.png"/>
     <bitmap id="Moon" filename="moon.png"/>
+    <bitmap id="Cat" filename="cat.png"/>
+    <bitmap id="Fox" filename="fox.png"/>
 </drawables>

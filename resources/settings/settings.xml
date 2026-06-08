@@ -42,6 +42,13 @@
             <listEntry value="16755200">@Strings.colAmber</listEntry>
         </settingConfig>
     </setting>
+    <setting propertyKey="@Properties.moonImage" title="@Strings.setMoonImage">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.optMoon</listEntry>
+            <listEntry value="1">@Strings.optCat</listEntry>
+            <listEntry value="2">@Strings.optFox</listEntry>
+        </settingConfig>
+    </setting>
 
     <setting propertyKey="@Properties.tz" title="@Strings.setTz">
         <settingConfig type="list">

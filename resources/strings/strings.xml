@@ -28,6 +28,7 @@
     <string id="setAccent">Accent Color</string>
     <string id="setDataColor">Data Color</string>
     <string id="setMoonArc">Moon Arc Color</string>
+    <string id="setMoonImage">Moon Image</string>
     <string id="setTz">Timezone (SW field)</string>
     <string id="setCompSE">SE field (height)</string>
     <string id="setCompNE">NE field (energy)</string>
@@ -39,6 +40,9 @@
     <string id="optDefault">Default</string>
     <string id="optNone">None (off)</string>
     <string id="optTransparent">Transparent</string>
+    <string id="optMoon">Moon</string>
+    <string id="optCat">Cat</string>
+    <string id="optFox">Fox</string>
     <string id="optWeather">Weather</string>
     <string id="optTime">Time</string>
     <string id="colAmber">Amber</string>

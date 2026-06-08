@@ -11,10 +11,13 @@
 # the previous frame. Frames are normalised to a fixed size before comparing, so
 # it's device-agnostic and never trips ImageMagick's same-size requirement.
 #
-# Usage: ./auto-shot.sh [DEVICE] [out.png]   (default marq2aviator, /tmp/moonkey-sim.png)
+# Usage: ./auto-shot.sh [-t|--transparent] [DEVICE] [out.png]
+#   (defaults: marq2aviator, /tmp/moonkey-sim.png; -t = transparent background)
 set -euo pipefail
 export LC_ALL=C   # force '.' decimal in ImageMagick fx output
 
+SHOT_ARGS=()
+if [ "${1:-}" = "-t" ] || [ "${1:-}" = "--transparent" ]; then SHOT_ARGS+=(--transparent); shift; fi
 DEVICE="${1:-marq2aviator}"
 OUT="${2:-/tmp/moonkey-sim.png}"
 KEY="$HOME/.connectiq/developer_key.der"
@@ -63,4 +66,4 @@ for t in $(seq 1 30); do
 done
 [ "$ready" = 1 ] || echo "   WARN: render not confirmed within 30s; capturing anyway"
 
-./screenshot.sh "$OUT"
+./screenshot.sh ${SHOT_ARGS[@]+"${SHOT_ARGS[@]}"} "$OUT"

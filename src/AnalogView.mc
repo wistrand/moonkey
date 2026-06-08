@@ -70,6 +70,9 @@ class AnalogView extends WatchUi.WatchFace {
     // "transparent" setting -> the arc is not drawn at all.
     private var _moonArcColor as Number = 0xAAAAAA;
     private var _moonArcHidden as Boolean = false;
+    // Which bitmap is baked as the "moon": 0 = moon (default), 1 = cat, 2 = fox.
+    // Phase shading + sky rotation still apply, so cat/fox also show "phases".
+    private var _moonImage as Number = 0;
     private const RING_R_FRAC = 0.27;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
     private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
 
@@ -216,7 +219,13 @@ class AnalogView extends WatchUi.WatchFace {
     //! sky-inclination rotation into the persistent display buffer. Runs hourly.
     private function bakeMoon(r as Number, phase as Float) as Graphics.BufferedBitmap or Null {
         if (_moon == null) {
-            _moon = WatchUi.loadResource(Rez.Drawables.Moon) as WatchUi.BitmapResource;
+            var rid = Rez.Drawables.Moon;
+            if (_moonImage == 1) {
+                rid = Rez.Drawables.Cat;
+            } else if (_moonImage == 2) {
+                rid = Rez.Drawables.Fox;
+            }
+            _moon = WatchUi.loadResource(rid) as WatchUi.BitmapResource;
         }
         var d = 2 * r;
 
@@ -461,12 +470,14 @@ class AnalogView extends WatchUi.WatchFace {
     //! the native editor drives. Sentinel values (-1 colour/tz, 0 complication)
     //! mean "unset" -> leave the native value. Safe to call repeatedly.
     function applyProperties() as Void {
+        var prevMoonImage = _moonImage;
         // Reset to code defaults, then let Garmin Connect settings override -- so a
         // "Default"/"Weather"/"Time"/-1 selection reverts live, not just on restart.
         _accentColor = DAYLIGHT_COLOR;
         _dataColor = 0xAAAAAA;
         _moonArcColor = 0xAAAAAA;
         _moonArcHidden = false;
+        _moonImage = 0;
         _tzStyle = 0;
         _swOff = false;
         setCompDefaults();
@@ -489,6 +500,10 @@ class AnalogView extends WatchUi.WatchFace {
                         _moonArcColor = mv;
                     }
                 }
+                var mi = Application.Properties.getValue("moonImage");
+                if (mi != null && (mi as Number) >= 0 && (mi as Number) <= 2) {
+                    _moonImage = mi as Number; // 0 moon, 1 cat, 2 fox
+                }
                 var tz = Application.Properties.getValue("tz");
                 if (tz != null) {
                     var tzc = tz as Number;
@@ -508,6 +523,10 @@ class AnalogView extends WatchUi.WatchFace {
                 }
             } catch (ex) {
             }
+        }
+        if (_moonImage != prevMoonImage) {
+            _moon = null;     // reload the selected drawable on next bake
+            _moonBucket = -1; // and force that re-bake immediately
         }
         subscribeComps();
         WatchUi.requestUpdate();
@@ -900,8 +919,16 @@ class AnalogView extends WatchUi.WatchFace {
         }
         if (loc != null) {
             var latR = loc.toRadians()[0] as Float;
-            if (latR > 1.58 || latR < -1.58) { // |lat| > ~90.5 deg = invalid
-                loc = null;
+            if (latR > 1.58 || latR < -1.58) {
+                // Out-of-range latitude only comes from the simulator's
+                // uninitialised GPS (lat/lon = 180); real GPS is always within
+                // +/-90, so this branch is dead on a watch. Default to a fixed
+                // location (Gothenburg) so the moon arc/tilt still render in the sim.
+                loc = new Position.Location({
+                    :latitude => 57.7089,
+                    :longitude => 11.9746,
+                    :format => :degrees
+                });
             }
         }
         return loc;
