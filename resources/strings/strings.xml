@@ -27,6 +27,7 @@
     <!-- Connect IQ app-settings (Garmin Connect) labels. -->
     <string id="setAccent">Accent Color</string>
     <string id="setDataColor">Data Color</string>
+    <string id="setMoonArc">Moon Arc Color</string>
     <string id="setTz">Timezone (SW field)</string>
     <string id="setCompSE">SE field (height)</string>
     <string id="setCompNE">NE field (energy)</string>
@@ -37,6 +38,7 @@
     <string id="setCompE">E field (time)</string>
     <string id="optDefault">Default</string>
     <string id="optNone">None (off)</string>
+    <string id="optTransparent">Transparent</string>
     <string id="optWeather">Weather</string>
     <string id="optTime">Time</string>
     <string id="colAmber">Amber</string>

@@ -66,6 +66,10 @@ class AnalogView extends WatchUi.WatchFace {
     // Data colour for the cardinal (N/E/S/W) field readouts and weather glyphs.
     // Defaults to light gray; user-selectable via the editor's data-colour picker.
     private var _dataColor as Number = 0xAAAAAA; // = light gray (COLOR_LT_GRAY)
+    // Moon above-horizon arc colour (default light gray); _moonArcHidden = the
+    // "transparent" setting -> the arc is not drawn at all.
+    private var _moonArcColor as Number = 0xAAAAAA;
+    private var _moonArcHidden as Boolean = false;
     private const RING_R_FRAC = 0.27;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
     private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
 
@@ -335,6 +339,9 @@ class AnalogView extends WatchUi.WatchFace {
     //! Thin ring hugging the moon showing its above-horizon span (moonrise ->
     //! moonset), with a current-time pointer. Recomputed hourly; interactive only.
     private function drawMoonArc(dc as Graphics.Dc, cx as Number, cy as Number, radius as Number) as Void {
+        if (_moonArcHidden) {
+            return; // "transparent" setting -> no arc
+        }
         var bucket = (Time.now().value() / 3600).toNumber();
         if (bucket != _mrsBucket) {
             _mrsBucket = bucket;
@@ -348,7 +355,7 @@ class AnalogView extends WatchUi.WatchFace {
         }
         var ar = (radius * 0.22).toNumber();
         dc.setPenWidth(3);
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(_moonArcColor, Graphics.COLOR_TRANSPARENT);
         if (_mrsState == 1) {
             dc.drawArc(cx, cy, ar, Graphics.ARC_CLOCKWISE, 0, 360); // up all day
         } else {
@@ -458,6 +465,8 @@ class AnalogView extends WatchUi.WatchFace {
         // "Default"/"Weather"/"Time"/-1 selection reverts live, not just on restart.
         _accentColor = DAYLIGHT_COLOR;
         _dataColor = 0xAAAAAA;
+        _moonArcColor = 0xAAAAAA;
+        _moonArcHidden = false;
         _tzStyle = 0;
         _swOff = false;
         setCompDefaults();
@@ -470,6 +479,15 @@ class AnalogView extends WatchUi.WatchFace {
                 var dc = Application.Properties.getValue("dataColor");
                 if (dc != null && (dc as Number) != -1) {
                     _dataColor = dc as Number;
+                }
+                var mac = Application.Properties.getValue("moonArcColor");
+                if (mac != null) {
+                    var mv = mac as Number;
+                    if (mv == -2) {        // -2 = transparent (hide the arc)
+                        _moonArcHidden = true;
+                    } else if (mv != -1) { // -1 = default (light gray); else a colour
+                        _moonArcColor = mv;
+                    }
                 }
                 var tz = Application.Properties.getValue("tz");
                 if (tz != null) {

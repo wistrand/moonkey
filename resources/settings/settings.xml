@@ -32,6 +32,16 @@
             <listEntry value="56831">@Strings.colCyan</listEntry>
         </settingConfig>
     </setting>
+    <setting propertyKey="@Properties.moonArcColor" title="@Strings.setMoonArc">
+        <settingConfig type="list">
+            <listEntry value="-1">@Strings.optDefault</listEntry>
+            <listEntry value="-2">@Strings.optTransparent</listEntry>
+            <listEntry value="7829367">@Strings.colDkGray</listEntry>
+            <listEntry value="11184810">@Strings.colLtGray</listEntry>
+            <listEntry value="16777215">@Strings.colWhite</listEntry>
+            <listEntry value="16755200">@Strings.colAmber</listEntry>
+        </settingConfig>
+    </setting>
 
     <setting propertyKey="@Properties.tz" title="@Strings.setTz">
         <settingConfig type="list">

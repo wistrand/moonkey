@@ -27,7 +27,7 @@ The dial carries data fields you choose — heart rate, steps, calories, body ba
 Make it yours:
 - Accent and data colors
 - A world timezone for the corner clock, with automatic daylight saving
-- Five complication slots you pick — on fēnix 8 / MARQ 2, tap the field on the watch to set it; or configure everything from Garmin Connect
+- Seven complication slots, configure everything from Garmin Connect
 
 All of the astronomy is computed on the watch, no internet required, and tracks published almanacs to within a few minutes. The face is always-on aware: it keeps its colors but dims the battery-hungry detail to protect the display.
 
