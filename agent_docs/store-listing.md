@@ -24,10 +24,11 @@ The hands are told apart by silhouette, not just length: the hour is a tapered b
 
 The dial carries data fields you choose — heart rate, steps, calories, body battery, intensity minutes, floors, altitude, and more — alongside weather (a clear / cloud / rain / snow / storm / fog glyph, temperature, a precipitation-chance bar, and a meteorological wind barb), the date, the time, and a second-timezone world clock.
 
-Make it yours:
-- Accent and data colors
+Make it yours, all from Garmin Connect:
+- Accent and data colours, and the moon-arc colour (or hide the arc)
+- The central image — moon, cat, fox, polar bear or seal (each still shows the phase)
 - A world timezone for the corner clock, with automatic daylight saving
-- Seven complication slots, configure everything from Garmin Connect
+- Seven configurable fields — pick a complication for each, hide any, or choose a special mode: a Persian Solar date with the Tehran clock, or your own custom text
 
 All of the astronomy is computed on the watch, no internet required, and tracks published almanacs to within a few minutes. The face is always-on aware: it keeps its colors but dims the battery-hungry detail to protect the display.
 

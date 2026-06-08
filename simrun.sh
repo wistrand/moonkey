@@ -1,26 +1,37 @@
 #!/usr/bin/env bash
-# Build + load a device into the simulator, optionally overriding app-settings
-# defaults for this run. Pass overrides as environment variables named exactly
-# after the <property id> entries in resources/settings/properties.xml, e.g.:
+# Build + load a device into the simulator, or (with --install) sideload it to a
+# connected watch -- optionally overriding app-settings defaults. Pass overrides as
+# environment variables named exactly after the <property id> entries in
+# resources/settings/properties.xml, e.g.:
 #
-#     moonImage=1 ./simrun.sh marq2aviator      # cat
-#     moonImage=2 tz=2 ./simrun.sh fenix843mm   # fox + Stockholm
-#     accentColor=16724016 ./simrun.sh          # red accent (default device)
+#     moonImage=1 ./simrun.sh marq2aviator           # cat, in the sim
+#     moonImage=2 tz=2 ./simrun.sh fenix843mm         # fox + Stockholm, in the sim
+#     moonImage=1 ./simrun.sh --install fenix843mm    # cat, sideloaded to the watch
 #
-# Mechanism: the simulator seeds Application.Properties from the .prg's
-# properties.xml defaults, but only when its persisted store (.SET) is absent and
-# the sim is fresh. So when overrides are given we patch those defaults into
-# properties.xml for the build, restore the file immediately after, then restart
-# the sim with the .SET cleared so the new defaults take effect. No overrides =>
-# a plain build + load into the running sim (the old `make run` behaviour).
+# Mechanism: Application.Properties is seeded from the .prg's properties.xml
+# defaults, so for each override we patch that default into properties.xml for the
+# build, then restore the file. In the sim we also restart it with the .SET cleared
+# so the new defaults take. --install builds the dev variant (moonkey-dev.jungle,
+# "Moonkey Dev") and sideloads via install.sh -- the dev sideload reads its settings
+# only from the .prg (not Connect-editable), so the baked defaults ARE the effective
+# settings. (If a prior dev install persisted settings, `make uninstall` first.)
 set -euo pipefail
+
+INSTALL=0
+if [ "${1:-}" = "--install" ]; then INSTALL=1; shift; fi
 
 DEVICE="${1:-marq2aviator}"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 PROPS="$ROOT/resources/settings/properties.xml"
 KEY="$HOME/.connectiq/developer_key.der"
 SDKBIN="$("$HOME/go/bin/connect-iq-sdk-manager-cli" sdk current-path --bin)"
-PRG="$ROOT/bin/moonkey-${DEVICE}.prg"
+
+if [ "$INSTALL" = 1 ]; then
+    JUNGLE="$ROOT/moonkey-dev.jungle"; PRG="$ROOT/bin/moonkey-dev-${DEVICE}.prg"
+else
+    JUNGLE="$ROOT/moonkey.jungle";     PRG="$ROOT/bin/moonkey-${DEVICE}.prg"
+fi
+mkdir -p "$ROOT/bin"
 
 # Collect overrides: env vars whose name matches a property id in properties.xml.
 ov=()
@@ -41,8 +52,15 @@ if [ ${#ov[@]} -gt 0 ]; then
 fi
 
 echo ">> build $DEVICE"
-"$SDKBIN/monkeyc" -d "$DEVICE" -f "$ROOT/moonkey.jungle" -o "$PRG" -y "$KEY" -w >/dev/null
+"$SDKBIN/monkeyc" -d "$DEVICE" -f "$JUNGLE" -o "$PRG" -y "$KEY" -w >/dev/null
 restore; trap - EXIT   # the .prg has baked the defaults; restore properties.xml now
+
+if [ "$INSTALL" = 1 ]; then
+    echo ">> sideload to watch"
+    "$ROOT/install.sh" "$DEVICE" "$PRG"
+    echo "installed $DEVICE (overrides: ${ov[*]:-none})"
+    exit 0
+fi
 
 if [ ${#ov[@]} -gt 0 ]; then
     echo ">> restart sim + clear persisted store (so the overridden defaults apply)"

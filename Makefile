@@ -55,10 +55,8 @@ shot: ## Build DEVICE, (re)launch sim, wait for the face to render, screenshot -
 	@mkdir -p $(BIN)
 	./auto-shot.sh $(DEVICE) $(BIN)/shot-$(DEVICE).png
 
-install: ## Build + sideload the DEV variant (separate app id + "Moonkey Dev"; coexists with the store/beta build)
-	@mkdir -p $(BIN)
-	$(MONKEYC) -d $(DEVICE) -f $(DEV_JUNGLE) -o $(BIN)/moonkey-dev-$(DEVICE).prg -y $(KEY) -w
-	./install.sh $(DEVICE) $(BIN)/moonkey-dev-$(DEVICE).prg
+install: ## Build + sideload the DEV variant ("Moonkey Dev"; coexists with store/beta). Override settings via env, e.g. `moonImage=1 make install DEVICE=fenix843mm`.
+	@./simrun.sh --install $(DEVICE)
 
 uninstall: ## Remove sideloaded Moonkey from a connected watch (./uninstall.sh DEVICE to narrow)
 	./uninstall.sh
