@@ -36,7 +36,7 @@ if [ ${#ov[@]} -gt 0 ]; then
     cp "$PROPS" "$PROPS.bak"; trap restore EXIT
     for kv in "${ov[@]}"; do
         k="${kv%%=*}"; val="${kv#*=}"
-        sed -i -E "s#(<property id=\"$k\" type=\"number\">)[^<]*(</property>)#\1${val}\2#" "$PROPS"
+        sed -i -E "s#(<property id=\"$k\" type=\"[a-z]+\">)[^<]*(</property>)#\1${val}\2#" "$PROPS"
     done
 fi
 

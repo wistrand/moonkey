@@ -47,7 +47,12 @@
             <listEntry value="0">@Strings.optMoon</listEntry>
             <listEntry value="1">@Strings.optCat</listEntry>
             <listEntry value="2">@Strings.optFox</listEntry>
+            <listEntry value="3">@Strings.optPolarbear</listEntry>
+            <listEntry value="4">@Strings.optSeal</listEntry>
         </settingConfig>
+    </setting>
+    <setting propertyKey="@Properties.text" title="@Strings.setText">
+        <settingConfig type="alphaNumeric" />
     </setting>
 
     <setting propertyKey="@Properties.tz" title="@Strings.setTz">
@@ -98,6 +103,7 @@
         <settingConfig type="list">
             <listEntry value="0">@Strings.optDefault</listEntry>
             <listEntry value="-1">@Strings.optNone</listEntry>
+            <listEntry value="101">@Strings.optText</listEntry>
             <listEntry value="1">@Strings.cHR</listEntry>
             <listEntry value="2">@Strings.cSteps</listEntry>
             <listEntry value="3">@Strings.cCalories</listEntry>
@@ -155,6 +161,7 @@
         <settingConfig type="list">
             <listEntry value="0">@Strings.optTime</listEntry>
             <listEntry value="-1">@Strings.optNone</listEntry>
+            <listEntry value="100">@Strings.optPersian</listEntry>
             <listEntry value="16">@Strings.cDate</listEntry>
             <listEntry value="1">@Strings.cHR</listEntry>
             <listEntry value="19">@Strings.cBattery</listEntry>

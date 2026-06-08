@@ -3,4 +3,6 @@
     <bitmap id="Moon" filename="moon.png"/>
     <bitmap id="Cat" filename="cat.png"/>
     <bitmap id="Fox" filename="fox.png"/>
+    <bitmap id="Polarbear" filename="polarbear.png"/>
+    <bitmap id="Seal" filename="seal.png"/>
 </drawables>

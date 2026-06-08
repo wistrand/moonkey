@@ -7,6 +7,7 @@
     <property id="dataColor" type="number">-1</property>
     <property id="moonArcColor" type="number">-1</property>
     <property id="moonImage" type="number">0</property>
+    <property id="text" type="string"></property>
     <property id="tz" type="number">0</property>
     <property id="compSE" type="number">0</property>
     <property id="compNE" type="number">0</property>

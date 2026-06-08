@@ -77,4 +77,39 @@ module Cal {
         }
         return n;
     }
+
+    //! Gregorian (y, m, d) -> Solar Hijri / Jalali (Persian) [jy, jm, jd]. The
+    //! arithmetic 33-year-cycle algorithm; matches the astronomical Persian
+    //! calendar for modern dates. Integer `/` is floor for the positive values here.
+    function toJalali(gy as Number, gm as Number, gd as Number) as Lang.Array {
+        var gdm = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+        var y = gy;
+        var jy = 0;
+        if (y <= 1600) {
+            jy = 0; y -= 621;
+        } else {
+            jy = 979; y -= 1600;
+        }
+        var gy2 = (gm > 2) ? (y + 1) : y;
+        var days = 365 * y + (gy2 + 3) / 4 - (gy2 + 99) / 100 + (gy2 + 399) / 400
+            - 80 + gd + (gdm[gm - 1] as Number);
+        jy += 33 * (days / 12053);
+        days %= 12053;
+        jy += 4 * (days / 1461);
+        days %= 1461;
+        if (days > 365) {
+            jy += (days - 1) / 365;
+            days = (days - 1) % 365;
+        }
+        var jm = 0;
+        var jd = 0;
+        if (days < 186) {
+            jm = 1 + days / 31;
+            jd = 1 + days % 31;
+        } else {
+            jm = 7 + (days - 186) / 30;
+            jd = 1 + (days - 186) % 30;
+        }
+        return [jy, jm, jd];
+    }
 }

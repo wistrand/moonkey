@@ -70,9 +70,16 @@ class AnalogView extends WatchUi.WatchFace {
     // "transparent" setting -> the arc is not drawn at all.
     private var _moonArcColor as Number = 0xAAAAAA;
     private var _moonArcHidden as Boolean = false;
-    // Which bitmap is baked as the "moon": 0 = moon (default), 1 = cat, 2 = fox.
-    // Phase shading + sky rotation still apply, so cat/fox also show "phases".
+    // Which bitmap is baked as the "moon": 0 moon (default), 1 cat, 2 fox,
+    // 3 polar bear, 4 seal. Phase shading + sky rotation still apply, so the
+    // animals also show "phases".
     private var _moonImage as Number = 0;
+    // E field "Persian Solar" mode (compE sentinel 100): Jalali date + Tehran time.
+    private var _ePersian as Boolean = false;
+    // N field "Show text" mode (compN sentinel 101): draws the `text` setting,
+    // no heart icon or label. _text is the user's string.
+    private var _nText as Boolean = false;
+    private var _text as String = "";
     private const RING_R_FRAC = 0.27;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
     private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
 
@@ -224,6 +231,10 @@ class AnalogView extends WatchUi.WatchFace {
                 rid = Rez.Drawables.Cat;
             } else if (_moonImage == 2) {
                 rid = Rez.Drawables.Fox;
+            } else if (_moonImage == 3) {
+                rid = Rez.Drawables.Polarbear;
+            } else if (_moonImage == 4) {
+                rid = Rez.Drawables.Seal;
             }
             _moon = WatchUi.loadResource(rid) as WatchUi.BitmapResource;
         }
@@ -478,6 +489,9 @@ class AnalogView extends WatchUi.WatchFace {
         _moonArcColor = 0xAAAAAA;
         _moonArcHidden = false;
         _moonImage = 0;
+        _ePersian = false;
+        _nText = false;
+        _text = "";
         _tzStyle = 0;
         _swOff = false;
         setCompDefaults();
@@ -501,8 +515,8 @@ class AnalogView extends WatchUi.WatchFace {
                     }
                 }
                 var mi = Application.Properties.getValue("moonImage");
-                if (mi != null && (mi as Number) >= 0 && (mi as Number) <= 2) {
-                    _moonImage = mi as Number; // 0 moon, 1 cat, 2 fox
+                if (mi != null && (mi as Number) >= 0 && (mi as Number) <= 4) {
+                    _moonImage = mi as Number; // 0 moon, 1 cat, 2 fox, 3 polarbear, 4 seal
                 }
                 var tz = Application.Properties.getValue("tz");
                 if (tz != null) {
@@ -512,14 +526,22 @@ class AnalogView extends WatchUi.WatchFace {
                         _tzStyle = tzc;
                     }
                 }
+                var tx = Application.Properties.getValue("text");
+                if (tx != null) {
+                    _text = tx as String;
+                }
                 if (Toybox has :Complications) {
                     applyCompProp(SLOT_SE, "compSE");
                     applyCompProp(SLOT_NE, "compNE");
                     applyCompProp(SLOT_N, "compN");
+                    var cn = Application.Properties.getValue("compN");
+                    _nText = (cn != null && (cn as Number) == 101); // 101 = show text
                     applyCompProp(SLOT_S, "compS");
                     applyCompProp(SLOT_NW, "compNW");
                     applyCompProp(SLOT_W, "compW");
                     applyCompProp(SLOT_E, "compE");
+                    var ce = Application.Properties.getValue("compE");
+                    _ePersian = (ce != null && (ce as Number) == 100); // 100 = Persian Solar
                 }
             } catch (ex) {
             }
@@ -1135,6 +1157,12 @@ class AnalogView extends WatchUi.WatchFace {
         var rightX = cx + off + radius * 0.07;
         if (_compOff[SLOT_E]) {
             // hidden -- draw nothing
+        } else if (_ePersian) {
+            // Persian Solar: Jalali date (Tehran's date) above Tehran time.
+            dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, persianDateText(),
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            drawValue(dc, rightX, cy + 22, tehranTimeText());
         } else if (_compId[SLOT_E] == null) {
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
             dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, dateText(),
@@ -1163,6 +1191,26 @@ class AnalogView extends WatchUi.WatchFace {
             }
         }
         drawValue(dc, x, valY, slotValue(slot));
+    }
+
+    //! Tehran moment (UTC+3:30, no DST -- Iran dropped DST in 2022) as a Gregorian Info.
+    private function tehranInfo() as Gregorian.Info {
+        return Gregorian.utcInfo(new Time.Moment(Time.now().value() + 12600), Time.FORMAT_SHORT);
+    }
+
+    //! Persian Solar (Jalali) date for Tehran's current date, compact "D Mon" (e.g. "18 Kho").
+    private function persianDateText() as String {
+        var t = tehranInfo();
+        var j = Cal.toJalali(t.year, t.month, t.day);
+        // Four letters where the name allows; Tir and Dey are only three.
+        var mon = ["Farv", "Ordi", "Khor", "Tir", "Mord", "Shah", "Mehr", "Aban", "Azar", "Dey", "Bahm", "Esfa"];
+        return (j[2] as Number).format("%d") + " " + (mon[(j[1] as Number) - 1] as String);
+    }
+
+    //! Tehran clock, 24-hour "H:MM".
+    private function tehranTimeText() as String {
+        var t = tehranInfo();
+        return Lang.format("$1$:$2$", [t.hour.format("%d"), t.min.format("%02d")]);
     }
 
     //! Draw a single value centered at (x, y).
@@ -1195,6 +1243,13 @@ class AnalogView extends WatchUi.WatchFace {
             return;
         }
         var textH = dc.getFontHeight(Graphics.FONT_TINY);
+        if (slot == SLOT_N && _nText) {
+            // "Show text": just the user's string, nudged up a bit; no value/heart/label.
+            dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(x, y - textH * 0.25, Graphics.FONT_TINY, _text,
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            return;
+        }
         var id = _compId[slot];
         var t = (id != null) ? id.getType() : null;
 
