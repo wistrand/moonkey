@@ -24,7 +24,7 @@ MOON_RAW  := data/moon-raw.jpg
 MOON_PNG  := resources/drawables/moon.png
 MOON_CROP := 1600x1600+739+1243
 
-.PHONY: all build run sim sim-restart install uninstall package package-beta clean moon help
+.PHONY: all build run sim sim-restart shot install uninstall package package-beta clean moon help
 .DEFAULT_GOAL := help
 
 help: ## Show this help
@@ -52,6 +52,10 @@ run: build sim ## Build DEVICE and load it into the simulator (returns; logs to 
 	@for i in $$(seq 1 60); do ss -ltn 2>/dev/null | grep -q ':1234' && break; sleep 0.2; done
 	@setsid $(MONKEYDO) $(BIN)/moonkey-$(DEVICE).prg $(DEVICE) >/tmp/monkeydo.log 2>&1 < /dev/null & \
 	  echo "loaded $(DEVICE) into simulator (logs: /tmp/monkeydo.log)"
+
+shot: ## Build DEVICE, (re)launch sim, wait for the face to render, screenshot -> bin/shot-<device>.png
+	@mkdir -p $(BIN)
+	./auto-shot.sh $(DEVICE) $(BIN)/shot-$(DEVICE).png
 
 install: ## Build + sideload the DEV variant (separate app id + "Moonkey Dev"; coexists with the store/beta build)
 	@mkdir -p $(BIN)

@@ -11,11 +11,27 @@
 # window's backing pixmap (so the crop offsets are relative to the window's fixed
 # layout, not the screen).
 #
-# Usage: ./screenshot.sh [output.png]      # default: /tmp/moonkey-sim.png
+# Usage: ./screenshot.sh [--transparent] [output.png]   # default: /tmp/moonkey-sim.png
+#   --transparent / -t : make the white sim-window background transparent. Uses a
+#       SEEDED floodfill (from background-white points), so only white CONNECTED to
+#       the background is removed -- the watch's own white pixels (second hand, etc.)
+#       are enclosed by the black face, disconnected, and so preserved. A global
+#       "white -> transparent" would wrongly erase those, hence floodfill.
 set -euo pipefail
+export LC_ALL=C   # force '.' decimal in ImageMagick fx output
 
-OUT="${1:-/tmp/moonkey-sim.png}"
+TRANSPARENT=0
+OUT=""
+for a in "$@"; do
+    case "$a" in
+        -t|--transparent) TRANSPARENT=1 ;;
+        -*) echo "error: unknown option '$a'" >&2; exit 2 ;;
+        *)  OUT="$a" ;;
+    esac
+done
+OUT="${OUT:-/tmp/moonkey-sim.png}"
 TITLE="CIQ Simulator"
+FUZZ="15%"
 
 command -v xprop  >/dev/null || { echo "error: xprop not found" >&2; exit 1; }
 command -v import >/dev/null || { echo "error: ImageMagick 'import' not found" >&2; exit 1; }
@@ -35,4 +51,33 @@ if [ -z "$simid" ]; then
 fi
 
 import -window "$simid" "$OUT"
+
+if [ "$TRANSPARENT" = 1 ]; then
+    w=$(magick "$OUT" -format "%[fx:w]" info:)
+    h=$(magick "$OUT" -format "%[fx:h]" info:)
+    # Candidate background-white seed points near the edges (a few px in, to clear
+    # the dark Mutter window frame): left/right margins at several heights, plus the
+    # menu bar (top) and status bar (bottom). Multiple seeds cover white regions that
+    # the watch body might split apart.
+    floods=()
+    for pt in "4,$((h/2))" "$((w-5)),$((h/2))" \
+              "4,$((h/4))" "$((w-5)),$((h/4))" \
+              "4,$((h*3/4))" "$((w-5)),$((h*3/4))" \
+              "$((w/2)),6" "$((w-30)),6" "30,6" "$((w/2)),$((h-6))"; do
+        x="${pt%,*}"; y="${pt#*,}"
+        # white iff the darkest RGB channel at the seed is high (excludes the dark
+        # frame and any coloured/AMOLED pixel, e.g. amber -> low blue).
+        minc=$(magick "${OUT}[1x1+${x}+${y}]" -format "%[fx:255*minima]" info: 2>/dev/null || echo 0)
+        if awk -v m="$minc" 'BEGIN{exit !(m>230)}'; then
+            floods+=(-floodfill "+${x}+${y}" white)
+        fi
+    done
+    if [ ${#floods[@]} -eq 0 ]; then
+        echo "warning: no white background seed found; leaving '$OUT' opaque" >&2
+    else
+        magick "$OUT" -alpha set -fuzz "$FUZZ" -fill none "${floods[@]}" "$OUT"
+        echo "(background made transparent via $(( ${#floods[@]} / 3 )) floodfill seed(s))"
+    fi
+fi
+
 echo "$OUT ($(magick identify -format '%wx%h' "$OUT"); sim window $simid)"
