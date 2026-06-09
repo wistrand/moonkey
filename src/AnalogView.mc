@@ -56,6 +56,13 @@ class AnalogView extends WatchUi.WatchFace {
     private const SLOT_W = 5;  // left field: weather composite by default, else a complication
     private const SLOT_E = 6;  // right field: date+time composite by default, else a complication
     private const SLOT_COUNT = 7;
+    // Special-mode sentinel codes (compX setting values >19, gated by flags rather
+    // than a Complications type). The settings.xml listEntry values must match these.
+    private const MODE_PERSIAN = 100;  // Persian Solar (E, S)
+    private const MODE_TEXT = 101;     // Show Text (N)
+    private const MODE_WEATHER = 102;  // Weather inline (N, S)
+    private const MODE_DATEWD = 103;   // Date + Weekday (E)
+    private const MODE_STEPSHR = 104;  // Steps + HR (W)
     private var _compId as Lang.Array = new [SLOT_COUNT];
     private var _compVal as Lang.Array = ["", "", "", "", "", "", ""];
     // Per-slot "off" marker: the field is hidden entirely (no value, no fallback,
@@ -638,8 +645,11 @@ class AnalogView extends WatchUi.WatchFace {
                 var stc = Application.Properties.getValue("secTickColor");
                 if (stc != null) {
                     var sv = stc as Number;
-                    _secTickHidden = (sv == -2);     // -2 = none/off
-                    if (!_secTickHidden) { _secTickColor = sv; }
+                    if (sv == -2) {            // -2 = none/off
+                        _secTickHidden = true;
+                    } else if (sv != -1) {    // -1 = default (keep light grey); else a colour
+                        _secTickColor = sv;
+                    }
                 }
                 var rg = Application.Properties.getValue("radialGradient");
                 if (rg != null) {
@@ -658,20 +668,20 @@ class AnalogView extends WatchUi.WatchFace {
                     applyCompProp(SLOT_NE, "compNE");
                     applyCompProp(SLOT_N, "compN");
                     var cn = Application.Properties.getValue("compN");
-                    _nText = (cn != null && (cn as Number) == 101);             // 101 = show text
-                    _compWeather[SLOT_N] = (cn != null && (cn as Number) == 102); // 102 = weather
+                    _nText = (cn != null && (cn as Number) == MODE_TEXT);
+                    _compWeather[SLOT_N] = (cn != null && (cn as Number) == MODE_WEATHER);
                     applyCompProp(SLOT_S, "compS");
                     var cs = Application.Properties.getValue("compS");
-                    _compWeather[SLOT_S] = (cs != null && (cs as Number) == 102);
-                    _sPersian = (cs != null && (cs as Number) == 100); // 100 = Persian Solar
+                    _compWeather[SLOT_S] = (cs != null && (cs as Number) == MODE_WEATHER);
+                    _sPersian = (cs != null && (cs as Number) == MODE_PERSIAN);
                     applyCompProp(SLOT_NW, "compNW");
                     applyCompProp(SLOT_W, "compW");
                     var cw = Application.Properties.getValue("compW");
-                    _wStepsHr = (cw != null && (cw as Number) == 104); // 104 = steps + HR
+                    _wStepsHr = (cw != null && (cw as Number) == MODE_STEPSHR);
                     applyCompProp(SLOT_E, "compE");
                     var ce = Application.Properties.getValue("compE");
-                    _ePersian = (ce != null && (ce as Number) == 100);     // 100 = Persian Solar
-                    _eDateWeekday = (ce != null && (ce as Number) == 103); // 103 = date + weekday
+                    _ePersian = (ce != null && (ce as Number) == MODE_PERSIAN);
+                    _eDateWeekday = (ce != null && (ce as Number) == MODE_DATEWD);
                 }
             } catch (ex) {
             }
@@ -687,9 +697,10 @@ class AnalogView extends WatchUi.WatchFace {
     //! Map one complication app-setting (compTypeFromCode codes) onto a slot.
     private function applyCompProp(slot as Number, key as String) as Void {
         var v = Application.Properties.getValue(key);
-        var code = (v != null) ? (v as Number) : 0;
-        // -1 = off (hide); >0 = a type; 0 = unset -> keep the code default.
-        _compOff[slot] = (code == -1);
+        var code = (v != null) ? (v as Number) : -1;
+        // Convention: -2 = off (hide); >0 = a complication type or special mode;
+        // -1 (or legacy 0) = default -> keep the code default from setCompDefaults().
+        _compOff[slot] = (code == -2);
         if (code > 0) {
             var t = compTypeFromCode(code);
             if (t != null) {

@@ -1,24 +1,28 @@
 <properties>
-    <!-- Connect IQ app settings (editable in Garmin Connect for beta/store installs;
-         editable in the simulator settings editor). Sentinel defaults (-1 colour/tz,
-         0 complication) mean "leave the native watch-face-config value alone", so
-         these only override when the user actually changes them. See applyProperties. -->
+    <!-- Connect IQ app settings (editable in Garmin Connect for beta/store installs,
+         or the simulator settings editor). Value conventions, uniform across settings:
+           -1  = Default  (use the in-code default)
+           -2  = None / Off  (hide or disable)
+         Colours are 0xRRGGBB hex. Complication slots additionally use 1-19
+         for a Complications type and 100+ for a special field mode (see settings.xml).
+         applyProperties() reads these (reset-then-apply), so they only override when
+         the user changes them. -->
     <property id="accentColor" type="number">-1</property>
     <property id="dataColor" type="number">-1</property>
     <property id="moonArcColor" type="number">-1</property>
     <property id="moonImage" type="number">0</property>
     <property id="text" type="string"></property>
     <property id="skipLabels" type="boolean">false</property>
-    <property id="secTickColor" type="number">-2</property>
+    <property id="secTickColor" type="number">-1</property>
     <property id="radialGradient" type="boolean">true</property>
     <property id="smallValues" type="boolean">false</property>
     <property id="metalHands" type="boolean">false</property>
-    <property id="tz" type="number">0</property>
-    <property id="compSE" type="number">0</property>
-    <property id="compNE" type="number">0</property>
-    <property id="compN" type="number">0</property>
-    <property id="compS" type="number">0</property>
-    <property id="compNW" type="number">0</property>
-    <property id="compW" type="number">0</property>
-    <property id="compE" type="number">0</property>
+    <property id="tz" type="number">-1</property>
+    <property id="compSE" type="number">-1</property>
+    <property id="compNE" type="number">-1</property>
+    <property id="compN" type="number">-1</property>
+    <property id="compS" type="number">-1</property>
+    <property id="compNW" type="number">-1</property>
+    <property id="compW" type="number">-1</property>
+    <property id="compE" type="number">-1</property>
 </properties>

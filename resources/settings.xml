@@ -2,47 +2,46 @@
     <!-- Garmin Connect / sim settings UI (the only config surface; no native editor).
          Values map 1:1 to applyProperties. Uniform value conventions:
            -1 = Default (in-code default)      -2 = None / Off (hide / disable)
-         Colours = 0xRRGGBB hex; tz = TZ_* index; complication slots use
-         1-19 for a Complications type and 100+ for a special field mode (these must
-         match the MODE_* constants in AnalogView.mc):
-           100 MODE_PERSIAN (E,S) · 101 MODE_TEXT (N) · 102 MODE_WEATHER (N,S)
-           103 MODE_DATEWD (E)    · 104 MODE_STEPSHR (W) -->
+         Colours = 0xRRGGBB as decimal; tz = TZ_* index; complication slots use
+         1-19 for a Complications type and 100+ for a special field mode:
+           100 Persian Solar (E,S) · 101 Show Text (N) · 102 Weather (N,S)
+           103 Date+Weekday (E)    · 104 Steps+HR (W) -->
 
     <setting propertyKey="@Properties.accentColor" title="@Strings.setAccent">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
-            <listEntry value="0xFFAA00">@Strings.colAmber</listEntry>
-            <listEntry value="0xFFFFFF">@Strings.colWhite</listEntry>
-            <listEntry value="0xFF3030">@Strings.colRed</listEntry>
-            <listEntry value="0xFF6600">@Strings.colOrange</listEntry>
-            <listEntry value="0xFFDD00">@Strings.colYellow</listEntry>
-            <listEntry value="0x33CC33">@Strings.colGreen</listEntry>
-            <listEntry value="0x00DDFF">@Strings.colCyan</listEntry>
-            <listEntry value="0x3399FF">@Strings.colBlue</listEntry>
-            <listEntry value="0xBB66FF">@Strings.colPurple</listEntry>
-            <listEntry value="0xFF55AA">@Strings.colPink</listEntry>
+            <listEntry value="16755200">@Strings.colAmber</listEntry>
+            <listEntry value="16777215">@Strings.colWhite</listEntry>
+            <listEntry value="16724016">@Strings.colRed</listEntry>
+            <listEntry value="16737792">@Strings.colOrange</listEntry>
+            <listEntry value="16768256">@Strings.colYellow</listEntry>
+            <listEntry value="3394611">@Strings.colGreen</listEntry>
+            <listEntry value="56831">@Strings.colCyan</listEntry>
+            <listEntry value="3381759">@Strings.colBlue</listEntry>
+            <listEntry value="12281599">@Strings.colPurple</listEntry>
+            <listEntry value="16733610">@Strings.colPink</listEntry>
         </settingConfig>
     </setting>
 
     <setting propertyKey="@Properties.dataColor" title="@Strings.setDataColor">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
-            <listEntry value="0xAAAAAA">@Strings.colLtGray</listEntry>
-            <listEntry value="0xCCCCCC">@Strings.colSilver</listEntry>
-            <listEntry value="0xFFFFFF">@Strings.colWhite</listEntry>
-            <listEntry value="0x777777">@Strings.colDkGray</listEntry>
-            <listEntry value="0xFFAA00">@Strings.colAmber</listEntry>
-            <listEntry value="0x00DDFF">@Strings.colCyan</listEntry>
+            <listEntry value="11184810">@Strings.colLtGray</listEntry>
+            <listEntry value="13421772">@Strings.colSilver</listEntry>
+            <listEntry value="16777215">@Strings.colWhite</listEntry>
+            <listEntry value="7829367">@Strings.colDkGray</listEntry>
+            <listEntry value="16755200">@Strings.colAmber</listEntry>
+            <listEntry value="56831">@Strings.colCyan</listEntry>
         </settingConfig>
     </setting>
     <setting propertyKey="@Properties.moonArcColor" title="@Strings.setMoonArc">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
-            <listEntry value="0x777777">@Strings.colDkGray</listEntry>
-            <listEntry value="0xAAAAAA">@Strings.colLtGray</listEntry>
-            <listEntry value="0xFFFFFF">@Strings.colWhite</listEntry>
-            <listEntry value="0xFFAA00">@Strings.colAmber</listEntry>
+            <listEntry value="7829367">@Strings.colDkGray</listEntry>
+            <listEntry value="11184810">@Strings.colLtGray</listEntry>
+            <listEntry value="16777215">@Strings.colWhite</listEntry>
+            <listEntry value="16755200">@Strings.colAmber</listEntry>
         </settingConfig>
     </setting>
     <setting propertyKey="@Properties.moonImage" title="@Strings.setMoonImage">
@@ -64,10 +63,10 @@
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
-            <listEntry value="0xFFFFFF">@Strings.colWhite</listEntry>
-            <listEntry value="0xAAAAAA">@Strings.colLtGray</listEntry>
-            <listEntry value="0x777777">@Strings.colDkGray</listEntry>
-            <listEntry value="0xFFAA00">@Strings.colAmber</listEntry>
+            <listEntry value="16777215">@Strings.colWhite</listEntry>
+            <listEntry value="11184810">@Strings.colLtGray</listEntry>
+            <listEntry value="7829367">@Strings.colDkGray</listEntry>
+            <listEntry value="16755200">@Strings.colAmber</listEntry>
         </settingConfig>
     </setting>
     <setting propertyKey="@Properties.radialGradient" title="@Strings.setRadialGradient">
