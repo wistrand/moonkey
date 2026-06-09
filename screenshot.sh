@@ -11,7 +11,10 @@
 # window's backing pixmap (so the crop offsets are relative to the window's fixed
 # layout, not the screen).
 #
-# Usage: ./screenshot.sh [--transparent] [output.png]   # default: /tmp/moonkey-sim.png
+# Usage: ./screenshot.sh [--crop] [--transparent] [output.png]  # default: /tmp/moonkey-sim.png
+#   --crop / -c : clip the sim's menu header + status footer, keeping the watch
+#       device area (detected as the strongly-white-background row band). Applied
+#       before --transparent.
 #   --transparent / -t : make the white sim-window background transparent. Uses a
 #       SEEDED floodfill (from background-white points), so only white CONNECTED to
 #       the background is removed -- the watch's own white pixels (second hand, etc.)
@@ -21,10 +24,12 @@ set -euo pipefail
 export LC_ALL=C   # force '.' decimal in ImageMagick fx output
 
 TRANSPARENT=0
+CROP=0
 OUT=""
 for a in "$@"; do
     case "$a" in
         -t|--transparent) TRANSPARENT=1 ;;
+        -c|--crop) CROP=1 ;;
         -*) echo "error: unknown option '$a'" >&2; exit 2 ;;
         *)  OUT="$a" ;;
     esac
@@ -51,6 +56,26 @@ if [ -z "$simid" ]; then
 fi
 
 import -window "$simid" "$OUT"
+
+if [ "$CROP" = 1 ]; then
+    # Clip the sim's menu header and status footer: the watch device area sits on a
+    # white background, while the grey chrome bars have only sparse (text) white. So
+    # threshold near-white -> white, average each row to 1px (= its white fraction),
+    # and keep the band of rows that are strongly white (>~78%) -- that span brackets
+    # the device area (its top/bottom white margins enclose the watch). Done BEFORE
+    # the transparent floodfill, which would otherwise erase the white we detect on.
+    ch=$(magick "$OUT" -format "%[fx:h]" info:)
+    cw=$(magick "$OUT" -format "%[fx:w]" info:)
+    bounds=$(magick "$OUT" -fuzz 5% -fill black +opaque white -colorspace gray -resize 1x${ch}\! txt:- \
+        | awk -F'[,:()]' '/^[0-9]/ { y=$2; v=$4+0; if (v>200){ if(t==""){t=y}; b=y } } END{ if(t!="") print t" "b }')
+    if [ -n "$bounds" ]; then
+        t="${bounds% *}"; b="${bounds#* }"
+        magick "$OUT" -crop "${cw}x$((b-t+1))+0+${t}" +repage "$OUT"
+        echo "(cropped chrome: kept rows ${t}-${b} of ${ch})"
+    else
+        echo "warning: no white device area found; left '$OUT' uncropped" >&2
+    fi
+fi
 
 if [ "$TRANSPARENT" = 1 ]; then
     w=$(magick "$OUT" -format "%[fx:w]" info:)

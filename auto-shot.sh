@@ -23,14 +23,37 @@ OUT="${2:-/tmp/moonkey-sim.png}"
 KEY="$HOME/.connectiq/developer_key.der"
 SDKBIN="$("$HOME/go/bin/connect-iq-sdk-manager-cli" sdk current-path --bin)"
 PRG="bin/moonkey-${DEVICE}.prg"
+PROPS="resources/settings/properties.xml"
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+restore() { [ -f "$PROPS.bak" ] && mv -f "$PROPS.bak" "$PROPS"; }
+trap 'restore; rm -rf "$TMP"' EXIT
+
+# Settings overrides: env vars named after properties.xml <property id>s are patched
+# into the defaults for this build (same as simrun.sh), then restored. Clearing the
+# sim's stored .SET on restart (below) is what lets the new defaults actually take.
+ov=()
+while read -r id; do
+    v="${!id-__UNSET__}"
+    [ "$v" = "__UNSET__" ] || ov+=("$id=$v")
+done < <(grep -oE 'id="[a-zA-Z]+"' "$PROPS" | sed -E 's/id="(.*)"/\1/')
+if [ ${#ov[@]} -gt 0 ]; then
+    echo ">> settings overrides: ${ov[*]}"
+    cp "$PROPS" "$PROPS.bak"
+    for kv in "${ov[@]}"; do
+        k="${kv%%=*}"; val="${kv#*=}"
+        sed -i -E "s#(<property id=\"$k\" type=\"[a-z]+\">)[^<]*(</property>)#\1${val}\2#" "$PROPS"
+    done
+fi
 
 echo ">> build $DEVICE"
 "$SDKBIN/monkeyc" -d "$DEVICE" -f moonkey.jungle -o "$PRG" -y "$KEY" -w >/dev/null
+restore   # the .prg has baked the defaults; restore properties.xml now
 
 echo ">> restart simulator (device switch needs a fresh sim)"
 pkill -f 'bin/simulato[r]' 2>/dev/null || true; sleep 2
+if [ ${#ov[@]} -gt 0 ]; then
+    find /tmp/com.garmin.connectiq -iname "MOONKEY*.SET" -delete 2>/dev/null || true
+fi
 setsid env GDK_BACKEND=x11 "$SDKBIN/simulator" >/tmp/ciqsim.log 2>&1 </dev/null &
 for i in $(seq 1 80); do ss -ltn 2>/dev/null | grep -q ':1234' && break; sleep 0.3; done
 
@@ -66,4 +89,4 @@ for t in $(seq 1 30); do
 done
 [ "$ready" = 1 ] || echo "   WARN: render not confirmed within 30s; capturing anyway"
 
-./screenshot.sh ${SHOT_ARGS[@]+"${SHOT_ARGS[@]}"} "$OUT"
+./screenshot.sh --crop ${SHOT_ARGS[@]+"${SHOT_ARGS[@]}"} "$OUT"
