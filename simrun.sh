@@ -40,7 +40,7 @@ while read -r id; do
     [ "$v" = "__UNSET__" ] || ov+=("$id=$v")
 done < <(grep -oE 'id="[a-zA-Z]+"' "$PROPS" | sed -E 's/id="(.*)"/\1/')
 
-restore() { [ -f "$PROPS.bak" ] && mv -f "$PROPS.bak" "$PROPS"; }
+restore() { [ -f "$PROPS.bak" ] && mv -f "$PROPS.bak" "$PROPS"; return 0; }  # return 0 so set -e doesn't abort when there's no .bak (no overrides)
 
 if [ ${#ov[@]} -gt 0 ]; then
     echo ">> settings overrides: ${ov[*]}"

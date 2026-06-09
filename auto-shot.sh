@@ -25,7 +25,7 @@ SDKBIN="$("$HOME/go/bin/connect-iq-sdk-manager-cli" sdk current-path --bin)"
 PRG="bin/moonkey-${DEVICE}.prg"
 PROPS="resources/settings/properties.xml"
 TMP="$(mktemp -d)"
-restore() { [ -f "$PROPS.bak" ] && mv -f "$PROPS.bak" "$PROPS"; }
+restore() { [ -f "$PROPS.bak" ] && mv -f "$PROPS.bak" "$PROPS"; return 0; }  # return 0 so set -e doesn't abort when there's no .bak (no overrides)
 trap 'restore; rm -rf "$TMP"' EXIT
 
 # Settings overrides: env vars named after properties.xml <property id>s are patched

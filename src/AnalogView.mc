@@ -1846,7 +1846,7 @@ class AnalogView extends WatchUi.WatchFace {
             // Metal banding on the tip: nested rects, dark edges -> bright centre.
             var hwTip = 1.5;
             var dark = scaleColor(_accentColor, 0.45);
-            var bright = lerpColor(_accentColor, 0xFFFFFF, 0.55);
+            var bright = lerpColor(_accentColor, 0xFFFFFF, 0.3);
             var bands = 3;
             for (var i = 0; i < bands; i++) {
                 var t = i / (bands - 1.0);
@@ -1889,7 +1889,7 @@ class AnalogView extends WatchUi.WatchFace {
         } else {
             // Metal banding: nested tapered bodies, dark edges -> bright centre.
             var dark = scaleColor(color, 0.45);
-            var bright = lerpColor(color, 0xFFFFFF, 0.55);
+            var bright = lerpColor(color, 0xFFFFFF, 0.3);
             var bands = 5;
             for (var i = 0; i < bands; i++) {
                 var t = i / (bands - 1.0);
@@ -1928,7 +1928,7 @@ class AnalogView extends WatchUi.WatchFace {
         // (bright) -> a cylindrical highlight across the hand. Bright tip falls out
         // since every band tapers to the same point.
         var dark = scaleColor(color, 0.45);
-        var bright = lerpColor(color, 0xFFFFFF, 0.55);
+        var bright = lerpColor(color, 0xFFFFFF, 0.3);
         var bands = 5;
         for (var i = 0; i < bands; i++) {
             var t = i / (bands - 1.0);
