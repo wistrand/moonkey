@@ -57,6 +57,21 @@
     <setting propertyKey="@Properties.skipLabels" title="@Strings.setSkipLabels">
         <settingConfig type="boolean" />
     </setting>
+    <setting propertyKey="@Properties.secTickColor" title="@Strings.setSecTicks">
+        <settingConfig type="list">
+            <listEntry value="-2">@Strings.optNone</listEntry>
+            <listEntry value="16777215">@Strings.colWhite</listEntry>
+            <listEntry value="11184810">@Strings.colLtGray</listEntry>
+            <listEntry value="7829367">@Strings.colDkGray</listEntry>
+            <listEntry value="16755200">@Strings.colAmber</listEntry>
+        </settingConfig>
+    </setting>
+    <setting propertyKey="@Properties.radialGradient" title="@Strings.setRadialGradient">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.smallValues" title="@Strings.setSmallValues">
+        <settingConfig type="boolean" />
+    </setting>
 
     <setting propertyKey="@Properties.tz" title="@Strings.setTz">
         <settingConfig type="list">

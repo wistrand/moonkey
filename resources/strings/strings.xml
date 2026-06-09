@@ -31,6 +31,9 @@
     <string id="setMoonImage">Moon Image</string>
     <string id="setText">Custom Text (N field)</string>
     <string id="setSkipLabels">Skip E/W Labels</string>
+    <string id="setSecTicks">Second Ticks</string>
+    <string id="setRadialGradient">Radial Gradient</string>
+    <string id="setSmallValues">Small Value Font</string>
     <string id="setTz">Timezone (SW field)</string>
     <string id="setCompSE">SE field (height)</string>
     <string id="setCompNE">NE field (energy)</string>

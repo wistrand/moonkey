@@ -93,6 +93,18 @@ class AnalogView extends WatchUi.WatchFace {
     // W field "Steps + HR" mode (compW sentinel 104): two lines, each value
     // prefixed by a small icon (footprints / heart).
     private var _wStepsHr as Boolean = false;
+    // Second-tick track (secTickColor setting; -2 = none/off, default light grey on):
+    // 48 short minor ticks + 12 longer U-shaped 5-min marks, baked into the radial
+    // cache. Geometry precomputed once.
+    private var _secTickColor as Number = 0xAAAAAA;
+    private var _secTickHidden as Boolean = false;
+    private var _secMinor as Lang.Array or Null = null; // 48 short tick lines [x1,y1,x2,y2]
+    private var _secMajor as Lang.Array or Null = null; // 12 U marks [cx,cy,w,s,e,e1x,e1y,i1x,i1y,e2x,e2y,i2x,i2y]
+    // Radial gradient arcs on/off (radialGradient setting, default on).
+    private var _gradientOn as Boolean = true;
+    // "Small values" (smallValues setting): draw the non-radial values in the 0.8x
+    // vector font (_labelFont) instead of their normal bitmap font. Off == exactly as before.
+    private var _smallValues as Boolean = false;
     private const RING_R_FRAC = 0.27;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
     private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
 
@@ -435,6 +447,67 @@ class AnalogView extends WatchUi.WatchFace {
         }
     }
 
+    //! Precompute the second-tick track: 48 short minor ticks (radial lines) at the
+    //! non-5-min positions, and 12 longer U marks at the 5-min positions (a semicircle
+    //! cap at the outer edge opening inward, plus two legs extending in). All near the edge.
+    private function buildSecTicks(cx as Number, cy as Number, radius as Number) as Void {
+        var rEdge = radius * 0.97;   // outer end at the edge, same as the radial gradient
+        var minorLen = radius * 0.03;
+        var majorLen = radius * 0.08;
+        var w = (radius * 0.022).toNumber();        // U cap radius / half-width
+        var minor = new [48];
+        var major = new [12];
+        var mi = 0;
+        for (var s = 0; s < 60; s++) {
+            var aDeg = s * 6;
+            var a = aDeg / 180.0 * Math.PI;
+            var sn = Math.sin(a);
+            var cs = Math.cos(a);
+            if (s % 5 == 0) {
+                var ct = rEdge - majorLen + w;       // cap centre radius (cap bulges inward)
+                var ccx = (cx + ct * sn).toNumber();
+                var ccy = (cy - ct * cs).toNumber();
+                var outward = 90 - aDeg;             // drawArc deg of the outward radial
+                var e1x = ccx + w * cs; var e1y = ccy + w * sn;   // cap ends (= arc ends, leg roots)
+                var e2x = ccx - w * cs; var e2y = ccy - w * sn;
+                var legLen = majorLen - w;
+                major[s / 5] = [ccx, ccy, w, outward + 90, outward + 270, // inner half -> opens outward
+                    e1x.toNumber(), e1y.toNumber(),
+                    (e1x + legLen * sn).toNumber(), (e1y - legLen * cs).toNumber(),
+                    e2x.toNumber(), e2y.toNumber(),
+                    (e2x + legLen * sn).toNumber(), (e2y - legLen * cs).toNumber()];
+            } else {
+                var inr = rEdge - minorLen;
+                minor[mi] = [(cx + rEdge * sn).toNumber(), (cy - rEdge * cs).toNumber(),
+                    (cx + inr * sn).toNumber(), (cy - inr * cs).toNumber()];
+                mi++;
+            }
+        }
+        _secMinor = minor;
+        _secMajor = major;
+    }
+
+    //! Draw the second-tick track into a dc (baked into the radial cache).
+    private function drawSecTicks(dc as Graphics.Dc, cx as Number, cy as Number, radius as Number) as Void {
+        if (_secMinor == null) {
+            buildSecTicks(cx, cy, radius);
+        }
+        var minor = _secMinor as Lang.Array;
+        var major = _secMajor as Lang.Array;
+        dc.setColor(_secTickColor, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(2);
+        for (var i = 0; i < minor.size(); i++) {
+            var m = minor[i] as Lang.Array;
+            dc.drawLine(m[0], m[1], m[2], m[3]);
+        }
+        for (var i = 0; i < major.size(); i++) {
+            var u = major[i] as Lang.Array;
+            dc.drawArc(u[0], u[1], u[2], Graphics.ARC_COUNTER_CLOCKWISE, u[3], u[4]);
+            dc.drawLine(u[5], u[6], u[7], u[8]);
+            dc.drawLine(u[9], u[10], u[11], u[12]);
+        }
+    }
+
     //! Lazily create a scalable vector font for radial text (needed by
     //! drawRadialText). Returns null on devices without a matching face.
     private function ensureVectorFont(dc as Graphics.Dc) as Void {
@@ -513,6 +586,10 @@ class AnalogView extends WatchUi.WatchFace {
         _tzStyle = 0;
         _swOff = false;
         _skipLabels = false;
+        _secTickHidden = false;
+        _secTickColor = 0xAAAAAA;
+        _gradientOn = true;
+        _smallValues = false;
         setCompDefaults();
         if (Toybox.Application has :Properties) {
             try {
@@ -552,6 +629,20 @@ class AnalogView extends WatchUi.WatchFace {
                 var sl = Application.Properties.getValue("skipLabels");
                 if (sl != null) {
                     _skipLabels = sl as Boolean;
+                }
+                var stc = Application.Properties.getValue("secTickColor");
+                if (stc != null) {
+                    var sv = stc as Number;
+                    _secTickHidden = (sv == -2);     // -2 = none/off
+                    if (!_secTickHidden) { _secTickColor = sv; }
+                }
+                var rg = Application.Properties.getValue("radialGradient");
+                if (rg != null) {
+                    _gradientOn = rg as Boolean;
+                }
+                var sv2 = Application.Properties.getValue("smallValues");
+                if (sv2 != null) {
+                    _smallValues = sv2 as Boolean;
                 }
                 if (Toybox has :Complications) {
                     applyCompProp(SLOT_SE, "compSE");
@@ -790,7 +881,8 @@ class AnalogView extends WatchUi.WatchFace {
         var fl = compInline(SLOT_SE, "FL " + floorsText());
         // Sleep state is part of the key: the gradient arcs are baked in only when
         // awake, so an enter/exit-sleep transition forces a rebuild.
-        var key = imText + "|" + sun + "|" + utc + "|" + fl + (_isSleeping ? "|s" : "|w");
+        var key = imText + "|" + sun + "|" + utc + "|" + fl + (_isSleeping ? "|s" : "|w")
+            + (_gradientOn ? "|g1" : "|g0") + "|t" + (_secTickHidden ? "x" : _secTickColor.format("%X"));
 
         var buf = (_radBuf != null) ? _radBuf.get() : null;
         if (buf == null || !key.equals(_radKey)) {
@@ -837,13 +929,18 @@ class AnalogView extends WatchUi.WatchFace {
         bdc.drawRadialText(cx, cy, _vectorFont, utc, Graphics.TEXT_JUSTIFY_CENTER, 225, rBot, ccw);   // SW
         bdc.drawRadialText(cx, cy, _vectorFont, fl, Graphics.TEXT_JUSTIFY_CENTER, 315, rBot, ccw);    // SE
 
-        // Thin gradient arcs ride in the same buffer (interactive only). They are
-        // fully static, so this runs once and only re-bakes on a sleep transition.
-        if (!_isSleeping) {
+        // Thin gradient arcs ride in the same buffer (interactive only, and only
+        // when enabled). They are fully static, so this runs once and re-bakes
+        // only on a sleep/gradient-toggle change (both in the cache key).
+        if (!_isSleeping && _gradientOn) {
             if (_gradArcs == null) {
                 buildGradientArcs(cx, cy, (radius * 0.97).toNumber());
             }
             drawGradientArcs(bdc);
+        }
+        // Second-tick track rides in the same buffer (interactive only, static).
+        if (!_isSleeping && !_secTickHidden) {
+            drawSecTicks(bdc, cx, cy, radius);
         }
         return buf;
     }
@@ -1194,7 +1291,7 @@ class AnalogView extends WatchUi.WatchFace {
         } else if (_ePersian) {
             // Persian Solar: Jalali date (Tehran's date) above Tehran time.
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, persianDateText(),
+            dc.drawText(rightX, cy - 16, vfont(Graphics.FONT_XTINY), persianDateText(),
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             drawValue(dc, rightX, cy + 22, tehranTimeText());
         } else if (_eDateWeekday) {
@@ -1205,15 +1302,15 @@ class AnalogView extends WatchUi.WatchFace {
                 // W is the small two-line steps+HR composite: match it so E and W
                 // align -- both lines small, persian-style padding (fh*0.5).
                 var dy = dc.getFontHeight(Graphics.FONT_XTINY) * 0.5;
-                dc.drawText(rightX, cy - dy, Graphics.FONT_XTINY, dateText(), j);
-                dc.drawText(rightX, cy + dy, Graphics.FONT_XTINY, weekdayText(), j);
+                dc.drawText(rightX, cy - dy, vfont(Graphics.FONT_XTINY), dateText(), j);
+                dc.drawText(rightX, cy + dy, vfont(Graphics.FONT_XTINY), weekdayText(), j);
             } else {
-                dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, dateText(), j);
+                dc.drawText(rightX, cy - 16, vfont(Graphics.FONT_XTINY), dateText(), j);
                 drawValue(dc, rightX, cy + 22, weekdayText());
             }
         } else if (_compId[SLOT_E] == null) {
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(rightX, cy - 16, Graphics.FONT_XTINY, dateText(),
+            dc.drawText(rightX, cy - 16, vfont(Graphics.FONT_XTINY), dateText(),
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             drawValue(dc, rightX, cy + 22, timeOfDayText());
         } else {
@@ -1264,8 +1361,15 @@ class AnalogView extends WatchUi.WatchFace {
     //! Draw a single value centered at (x, y).
     private function drawValue(dc as Graphics.Dc, x as Numeric, y as Numeric, value as String) as Void {
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, y, Graphics.FONT_TINY, value,
+        dc.drawText(x, y, vfont(Graphics.FONT_TINY), value,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    //! The font to draw a value in: _labelFont (0.8x vector) when "small values" is
+    //! on and a vector font is available, else the given font -- so when the option
+    //! is off this is the identity and rendering is exactly as before.
+    private function vfont(current as Graphics.FontType) as Graphics.FontType or Graphics.VectorFont {
+        return (_smallValues && _labelFont != null) ? _labelFont : current;
     }
 
     //! Thin horizontal precip-chance bar (amber fill over a dark track) centred
@@ -1297,14 +1401,14 @@ class AnalogView extends WatchUi.WatchFace {
         if (slot == SLOT_N && _nText) {
             // "Show text": just the user's string, nudged up a bit; no value/heart/label.
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(x, y - textH * 0.25, cardFont, _text,
+            dc.drawText(x, y - textH * 0.25, vfont(cardFont), _text,
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             return;
         }
         if (_compWeather[slot]) {
             // "Weather": icon + temperature on one line, no wind barb, no label;
             // nudged a line clear of centre (up on N, down on S).
-            drawWeatherInline(dc, x, y + (isNorth ? -textH * 0.6 : textH * 0.6), textH, cardFont);
+            drawWeatherInline(dc, x, y + (isNorth ? -textH * 0.6 : textH * 0.6), textH, vfont(cardFont));
             return;
         }
         if (slot == SLOT_S && _sPersian) {
@@ -1329,7 +1433,7 @@ class AnalogView extends WatchUi.WatchFace {
         }
 
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, vy-vvy, cardFont, slotValue(slot),
+        dc.drawText(x, vy-vvy, vfont(cardFont), slotValue(slot),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         if (t == Complications.COMPLICATION_TYPE_HEART_RATE) {
@@ -1353,7 +1457,7 @@ class AnalogView extends WatchUi.WatchFace {
     //! Inline weather for an N/S slot: the weather icon and temperature on one line,
     //! centred at (x, y), no wind barb or label. Icon sized to the FONT_TINY line.
     private function drawWeatherInline(dc as Graphics.Dc, x as Numeric, y as Numeric,
-            textH as Numeric, font as Graphics.FontType) as Void {
+            textH as Numeric, font as Graphics.FontType or Graphics.VectorFont) as Void {
         var temp = temperatureText();
         var r = (textH * 0.45).toNumber();
         var gap = 4;
@@ -1371,8 +1475,8 @@ class AnalogView extends WatchUi.WatchFace {
         var fh = dc.getFontHeight(Graphics.FONT_XTINY);
         var just = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, y - fh * 0.5, Graphics.FONT_XTINY, persianDateText(), just);
-        dc.drawText(x, y + fh * 0.5, Graphics.FONT_XTINY, tehranTimeText(), just);
+        dc.drawText(x, y - fh * 0.5, vfont(Graphics.FONT_XTINY), persianDateText(), just);
+        dc.drawText(x, y + fh * 0.5, vfont(Graphics.FONT_XTINY), tehranTimeText(), just);
     }
 
     //! W "Steps + HR" composite: heart rate (top) over steps (bottom), two
@@ -1385,13 +1489,19 @@ class AnalogView extends WatchUi.WatchFace {
         var fh = dc.getFontHeight(Graphics.FONT_XTINY);
         var dy = fh * 0.5;
         var lx = x - 8;   // nudge the whole composite a bit left
-        var ctr = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
-        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(lx, cy - dy, Graphics.FONT_XTINY, hr, ctr);
-        dc.drawText(lx, cy + dy, Graphics.FONT_XTINY, steps, ctr);
         var hsize = fh * 0.6;
-        var hw = dc.getTextWidthInPixels(hr, Graphics.FONT_XTINY);
-        drawHeart(dc, lx - hw / 2.0 - 4 - hsize / 2.0, cy - dy, hsize);
+        var gap = 4;
+        var vf = vfont(Graphics.FONT_XTINY);
+        var hw = dc.getTextWidthInPixels(hr, vf);
+        var left = lx - (hsize + gap + hw) / 2.0;   // centre the heart+value group at lx
+        dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
+        // HR (top): heart + value, the group centred.
+        drawHeart(dc, left + hsize / 2.0, cy - dy, hsize);
+        dc.drawText(left + hsize + gap, cy - dy, vf, hr,
+            Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+        // Steps (bottom): plain centred value.
+        dc.drawText(lx, cy + dy, vf, steps,
+            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     //! Fill a heart of the given width centered at (cx, cy) using the classic
