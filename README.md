@@ -20,14 +20,15 @@ data fields.
   (computed sunrise→sunset), a pointer marks the current time, and a gradient "sun ring" peaks at
   solar noon.
 - **Hands differentiated by silhouette** — hour is a tapered baton ending in an open ring, minute
-  a tapered lance to a point, second a white shaft with an amber tip. The slow hands creep
-  smoothly; the seconds tick (1 Hz redraw budget).
-- **Configurable** (Garmin Connect app settings) — accent colour, data colour, **moon-arc colour**
-  (or hide it), the **moon image** (moon, cat, fox, polar bear or seal), a world **timezone** for
-  the SW field (17 zones, automatic DST), and **seven complication slots** (the five data fields
-  plus **weather** and the **clock**): pick a complication per slot, **hide any field**, or pick a
-  special mode — the E field as a **Persian Solar date + Tehran clock**, the N field as **custom
-  text**. All from Garmin Connect, on every device.
+  a tapered lance to a point, second a white shaft with an amber tip (optionally with a brushed-metal
+  gradient). The slow hands creep smoothly; the seconds tick (1 Hz redraw budget).
+- **Configurable** (Garmin Connect app settings) — accent & data colours, **moon-arc colour**, the
+  **moon image** (moon, cat, fox, polar bear or seal), optional **metal-look hands**, a **second-tick
+  track** (colour, or off), a **radial-gradient** toggle, a **small-value font**, a world **timezone**
+  (17 zones, automatic DST), and **seven complication slots** (five data fields + weather + clock):
+  pick a complication per slot, **hide any**, or choose a special mode — **Persian Solar date + Tehran
+  clock** (E or S), **weather** icon+temp (N/S), **date + weekday** (E), **steps + heart rate** (W), or
+  **custom text** (N). All from Garmin Connect, on every device.
 - **Data fields** — five of them are the configurable complications above (defaulting to heart
   rate, steps, intensity minutes, floors, and sunrise/sunset); plus date, time, and weather: an
   icon (clear / cloud / rain / snow / storm / fog), temperature, a precipitation-chance bar, and a
