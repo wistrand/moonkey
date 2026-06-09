@@ -72,6 +72,9 @@
     <setting propertyKey="@Properties.smallValues" title="@Strings.setSmallValues">
         <settingConfig type="boolean" />
     </setting>
+    <setting propertyKey="@Properties.metalHands" title="@Strings.setMetalHands">
+        <settingConfig type="boolean" />
+    </setting>
 
     <setting propertyKey="@Properties.tz" title="@Strings.setTz">
         <settingConfig type="list">

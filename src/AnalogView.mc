@@ -105,6 +105,10 @@ class AnalogView extends WatchUi.WatchFace {
     // "Small values" (smallValues setting): draw the non-radial values in the 0.8x
     // vector font (_labelFont) instead of their normal bitmap font. Off == exactly as before.
     private var _smallValues as Boolean = false;
+    // "Metal hands" (metalHands setting, default off): give the accent-coloured hands a
+    // cylindrical gradient via nested polys (dark edges -> bright centre). Solid when off
+    // or asleep.
+    private var _metalHands as Boolean = false;
     private const RING_R_FRAC = 0.27;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
     private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
 
@@ -590,6 +594,7 @@ class AnalogView extends WatchUi.WatchFace {
         _secTickColor = 0xAAAAAA;
         _gradientOn = true;
         _smallValues = false;
+        _metalHands = false;
         setCompDefaults();
         if (Toybox.Application has :Properties) {
             try {
@@ -643,6 +648,10 @@ class AnalogView extends WatchUi.WatchFace {
                 var sv2 = Application.Properties.getValue("smallValues");
                 if (sv2 != null) {
                     _smallValues = sv2 as Boolean;
+                }
+                var mh = Application.Properties.getValue("metalHands");
+                if (mh != null) {
+                    _metalHands = mh as Boolean;
                 }
                 if (Toybox has :Complications) {
                     applyCompProp(SLOT_SE, "compSE");
@@ -1801,6 +1810,7 @@ class AnalogView extends WatchUi.WatchFace {
             angle as Float, innerR as Float, length as Float) as Void {
         var sin = Math.sin(angle);
         var cos = Math.cos(angle);
+        var dx = sin; var dy = -cos; var px = cos; var py = sin;
         var split = length * 0.80; // accent tip = outer ~20% of the hand
         var x0 = cx + innerR * sin;
         var y0 = cy - innerR * cos;
@@ -1812,12 +1822,39 @@ class AnalogView extends WatchUi.WatchFace {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
         dc.setPenWidth(5);
         dc.drawLine(x0, y0, x1, y1);
-        // White body, accent tip.
-        dc.setPenWidth(3);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawLine(x0, y0, xs, ys);
-        dc.setColor(_accentColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawLine(xs, ys, x1, y1);
+        // White shaft.
+        if (!_metalHands) {
+            dc.setPenWidth(3);
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+            dc.drawLine(x0, y0, xs, ys);
+        } else {
+            // Metal banding on the shaft: nested rects, grey edges -> white centre.
+            var sdark = scaleColor(0xFFFFFF, 0.45);
+            for (var i = 0; i < 3; i++) {
+                var t = i / 2.0;
+                var s = 1.0 - 0.85 * t;
+                dc.setColor(lerpColor(sdark, 0xFFFFFF, t), Graphics.COLOR_TRANSPARENT);
+                handRect(dc, cx, cy, dx, dy, px, py, innerR, split, 1.5 * s, 1.5 * s);
+            }
+        }
+        // Accent tip.
+        if (!_metalHands) {
+            dc.setPenWidth(3);
+            dc.setColor(_accentColor, Graphics.COLOR_TRANSPARENT);
+            dc.drawLine(xs, ys, x1, y1);
+        } else {
+            // Metal banding on the tip: nested rects, dark edges -> bright centre.
+            var hwTip = 1.5;
+            var dark = scaleColor(_accentColor, 0.45);
+            var bright = lerpColor(_accentColor, 0xFFFFFF, 0.55);
+            var bands = 3;
+            for (var i = 0; i < bands; i++) {
+                var t = i / (bands - 1.0);
+                var s = 1.0 - 0.85 * t;
+                dc.setColor(lerpColor(dark, bright, t), Graphics.COLOR_TRANSPARENT);
+                handRect(dc, cx, cy, dx, dy, px, py, split, length, hwTip * s, hwTip * s);
+            }
+        }
         // Thin black cut at the white->accent transition.
         drawHandCut(dc, cx, cy, angle, split, 3.0);
     }
@@ -1846,8 +1883,23 @@ class AnalogView extends WatchUi.WatchFace {
         dc.setPenWidth(5);
         dc.drawCircle(rcx, rcy, ringR);
         // Fill: body tapers from full width down to the ring's stroke weight.
+        if (_isSleeping || !_metalHands) {
+            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+            handRect(dc, cx, cy, dx, dy, px, py, innerR, bodyEnd, hw, 2.5);
+        } else {
+            // Metal banding: nested tapered bodies, dark edges -> bright centre.
+            var dark = scaleColor(color, 0.45);
+            var bright = lerpColor(color, 0xFFFFFF, 0.55);
+            var bands = 5;
+            for (var i = 0; i < bands; i++) {
+                var t = i / (bands - 1.0);
+                var s = 1.0 - 0.85 * t;
+                dc.setColor(lerpColor(dark, bright, t), Graphics.COLOR_TRANSPARENT);
+                handRect(dc, cx, cy, dx, dy, px, py, innerR, bodyEnd, hw * s, 2.5 * s);
+            }
+        }
+        // Open-ring tip stays solid accent.
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-        handRect(dc, cx, cy, dx, dy, px, py, innerR, bodyEnd, hw, 2.5);
         dc.setPenWidth(3);
         dc.drawCircle(rcx, rcy, ringR);
     }
@@ -1866,8 +1918,23 @@ class AnalogView extends WatchUi.WatchFace {
         var shoulder = length * 0.90;      // parallel body up to here, then a short blunt point
         dc.setColor(0x808080, Graphics.COLOR_TRANSPARENT);
         lancePoly(dc, cx, cy, dx, dy, px, py, innerR - 1.0, shoulder, length + 1.5, hw + 1.0);
-        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-        lancePoly(dc, cx, cy, dx, dy, px, py, innerR, shoulder, length, hw);
+        if (_isSleeping || !_metalHands) {
+            // Always-on or metal off: single solid fill.
+            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+            lancePoly(dc, cx, cy, dx, dy, px, py, innerR, shoulder, length, hw);
+            return;
+        }
+        // Metal/gradient fill: nested lances from full width (dark) to a thin centre
+        // (bright) -> a cylindrical highlight across the hand. Bright tip falls out
+        // since every band tapers to the same point.
+        var dark = scaleColor(color, 0.45);
+        var bright = lerpColor(color, 0xFFFFFF, 0.55);
+        var bands = 5;
+        for (var i = 0; i < bands; i++) {
+            var t = i / (bands - 1.0);
+            dc.setColor(lerpColor(dark, bright, t), Graphics.COLOR_TRANSPARENT);
+            lancePoly(dc, cx, cy, dx, dy, px, py, innerR, shoulder, length, hw * (1.0 - 0.85 * t));
+        }
     }
 
     //! Fill a tapered quad along a hand: radius r0..r1 with half-width hw0 at the
@@ -1885,6 +1952,22 @@ class AnalogView extends WatchUi.WatchFace {
             [(bx - px * hw1).toNumber(), (by - py * hw1).toNumber()],
             [(ax - px * hw0).toNumber(), (ay - py * hw0).toNumber()]
         ]);
+    }
+
+    //! Scale an 0xRRGGBB colour's channels by f (for the dark band of the metal fill).
+    private function scaleColor(c as Number, f as Float) as Number {
+        var r = (((c >> 16) & 0xFF) * f).toNumber();
+        var g = (((c >> 8) & 0xFF) * f).toNumber();
+        var b = ((c & 0xFF) * f).toNumber();
+        return (r << 16) | (g << 8) | b;
+    }
+
+    //! Per-channel lerp between two 0xRRGGBB colours (t in 0..1).
+    private function lerpColor(ca as Number, cb as Number, t as Float) as Number {
+        var r = (((ca >> 16) & 0xFF) + (((cb >> 16) & 0xFF) - ((ca >> 16) & 0xFF)) * t).toNumber();
+        var g = (((ca >> 8) & 0xFF) + (((cb >> 8) & 0xFF) - ((ca >> 8) & 0xFF)) * t).toNumber();
+        var b = ((ca & 0xFF) + ((cb & 0xFF) - (ca & 0xFF)) * t).toNumber();
+        return (r << 16) | (g << 8) | b;
     }
 
     //! Fill a 5-point lance: flat base (half-width hw) from r0 to the shoulder rs,
