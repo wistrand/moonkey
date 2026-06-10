@@ -71,6 +71,16 @@
     padding:7px 14px; border-radius:999px; font-size:14px;
   }
 
+  /* config gallery */
+  .looks{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:28px 24px; margin-top:8px}
+  .look{margin:0; text-align:center}
+  .look img{
+    width:100%; max-width:240px; height:auto; display:block; margin:0 auto 12px;
+    filter:drop-shadow(0 14px 34px rgba(0,0,0,.55));
+  }
+  .look h3{margin:0 0 4px; font-size:15px; color:var(--ink)}
+  .look p{margin:0 auto; max-width:240px; color:var(--muted); font-size:13px; line-height:1.5}
+
   footer{padding:48px 0 64px; border-top:1px solid var(--line); color:var(--muted); font-size:14px}
   footer .row{display:flex; gap:18px; flex-wrap:wrap; align-items:center; justify-content:space-between}
   .small{color:var(--muted); font-size:13px}
@@ -105,7 +115,7 @@
     <div class="grid">
       <div class="card"><h3><span class="dot">●</span> Photographic Moon</h3><p>Soft-terminator shaded for the live phase and tilted to your sky's true inclination (bright-limb position angle minus parallactic angle).</p></div>
       <div class="card"><h3><span class="dot">●</span> Moonrise / moonset arc</h3><p>A thin ring around the disc shows the Moon's span above the horizon for your location.</p></div>
-      <div class="card"><h3><span class="dot">●</span> 24-hour day/night ring</h3><p>Midnight at top, noon at bottom; an amber arc spans daylight (sunrise to sunset) with a current-time pointer and a sun ring that brightens toward solar noon.</p></div>
+      <div class="card"><h3><span class="dot">●</span> 24-hour day/night ring</h3><p>Midnight at top, noon at bottom; an amber arc spans daylight (sunrise to sunset) with a current-time pointer, a sun ring that brightens toward midday, and optional N/S markers at the sun's meridian crossing.</p></div>
       <div class="card"><h3><span class="dot">●</span> Hands by silhouette</h3><p>Hour is a tapered baton ending in an open ring, minute a tapered lance, second a white shaft tipped in amber — told apart by shape, not just length.</p></div>
       <div class="card"><h3><span class="dot">●</span> Weather at a glance</h3><p>A clear / cloud / rain / snow / storm / fog glyph, temperature, a precipitation-chance bar, and a meteorological wind barb.</p></div>
       <div class="card"><h3><span class="dot">●</span> Always-on aware</h3><p>Keeps its colors in low-power mode but dims the battery-hungry detail to protect the display.</p></div>
@@ -115,12 +125,29 @@
 
 <section id="config">
   <div class="wrap">
-    <h2>Make it yours</h2>
-    <p class="lead">Five complication slots plus colors and a world clock — configure on the watch (fēnix 8 / MARQ 2) by tapping the field, or from Garmin Connect.</p>
-    <div class="grid">
-      <div class="card"><h3>Colors</h3><p>Pick an accent color and a separate data color for the readouts.</p></div>
-      <div class="card"><h3>World clock</h3><p>A second timezone for the corner field, with automatic daylight saving.</p></div>
-      <div class="card"><h3>Complications</h3><p>Five fields you choose: heart rate, steps, calories, body battery, intensity, floors, altitude, sunrise/sunset, and more.</p></div>
+    <h2>One face, many looks</h2>
+    <p class="lead">Seven fields, accent &amp; data colors, the central image, a world clock, N/S markers, brushed-metal hands and more — all from Garmin Connect. A few examples (fēnix 8):</p>
+    <div class="looks">
+      <figure class="look">
+        <img src="cfg-default.png" width="240" height="319" loading="lazy" alt="Moonkey with default settings — Moon at center, five data fields and weather.">
+        <h3>Default</h3>
+        <p>Out of the box: the photographic Moon, five data fields, weather, and the day/night ring.</p>
+      </figure>
+      <figure class="look">
+        <img src="cfg-fox.png" width="240" height="319" loading="lazy" alt="Moonkey with a fox image, cyan metal hands and N/S markers.">
+        <h3>Fox &amp; cyan</h3>
+        <p>A fox at the center, cyan brushed-metal hands, small fonts, and the N/S meridian markers on the ring.</p>
+      </figure>
+      <figure class="look">
+        <img src="cfg-loaded.png" width="240" height="319" loading="lazy" alt="Moonkey fully customized: cat image, Persian date, weather, steps and heart rate.">
+        <h3>Loaded</h3>
+        <p>A cat Moon, metal hands, the Persian Solar date with a Tehran clock, weather, steps &amp; heart rate, and the weekday.</p>
+      </figure>
+      <figure class="look">
+        <img src="cfg-minimal.png" width="240" height="319" loading="lazy" alt="Moonkey, minimal: time, weather, polar-bear image, white tick track and N/S markers.">
+        <h3>Minimal</h3>
+        <p>Stripped back to time, weather, a polar-bear Moon, a white second-tick track and the N/S markers.</p>
+      </figure>
     </div>
   </div>
 </section>

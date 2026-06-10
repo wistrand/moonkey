@@ -24,7 +24,7 @@ MOON_RAW  := data/moon-raw.jpg
 MOON_PNG  := resources/drawables/moon.png
 MOON_CROP := 1600x1600+739+1243
 
-.PHONY: all build run sim sim-restart shot install uninstall package package-beta clean moon settings-doc help
+.PHONY: all build run sim sim-restart shot install uninstall package package-beta clean moon settings-doc gallery help
 .DEFAULT_GOAL := help
 
 help: ## Show this help
@@ -80,6 +80,16 @@ moon: ## Regenerate resources/drawables/moon.png from moon-raw.jpg
 
 settings-doc: ## Regenerate agent_docs/settings.md from resources/settings/*.xml
 	@./gen-settings-doc.py
+
+gallery: ## Regenerate the docs/ landing-page screenshots (fenix843mm, transparent) -> docs/cfg-*.png
+	@# Each is a representative settings combo (see docs/index.html). auto-shot honours
+	@# env-var overrides named after properties.xml ids. The default shot passes a no-op
+	@# moonImage=0 so auto-shot clears the sim's stored .SET (otherwise it reuses the
+	@# previous run's settings and the "default" comes out as whatever ran last).
+	moonImage=0 ./auto-shot.sh -t fenix843mm docs/cfg-default.png
+	nsMarkers=true skipLabels=true compN=102 compS=100 compW=104 compE=103 moonImage=1 compNW=-2 compNE=-2 compSE=-2 tz=-2 accentColor=16755200 secTickColor=0x777777 radialGradient=false smallValues=true metalHands=true ./auto-shot.sh -t fenix843mm docs/cfg-loaded.png
+	moonImage=2 nsMarkers=true accentColor=0x00DDFF metalHands=true smallValues=true radialGradient=false secTickColor=-2 ./auto-shot.sh -t fenix843mm docs/cfg-fox.png
+	moonImage=3 nsMarkers=true accentColor=0xFFFFFF secTickColor=0xFFFFFF radialGradient=false compNE=-2 compSE=-2 compNW=-2 tz=-2 compN=-2 compS=-2 ./auto-shot.sh -t fenix843mm docs/cfg-minimal.png
 
 clean: ## Remove build artifacts
 	rm -f $(BIN)/*.prg $(BIN)/*.iq $(BIN)/*.log $(BIN)/*.debug.xml
