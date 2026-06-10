@@ -24,7 +24,7 @@ MOON_RAW  := data/moon-raw.jpg
 MOON_PNG  := resources/drawables/moon.png
 MOON_CROP := 1600x1600+739+1243
 
-.PHONY: all build run sim sim-restart shot install uninstall package package-beta clean moon help
+.PHONY: all build run sim sim-restart shot install uninstall package package-beta clean moon settings-doc help
 .DEFAULT_GOAL := help
 
 help: ## Show this help
@@ -77,6 +77,9 @@ moon: ## Regenerate resources/drawables/moon.png from moon-raw.jpg
 	  -compose Multiply -composite \
 	  -colorspace sRGB -strip $(MOON_PNG)
 	@echo "wrote $(MOON_PNG) ($$(stat -c%s $(MOON_PNG)) bytes)"
+
+settings-doc: ## Regenerate agent_docs/settings.md from resources/settings/*.xml
+	@./gen-settings-doc.py
 
 clean: ## Remove build artifacts
 	rm -f $(BIN)/*.prg $(BIN)/*.iq $(BIN)/*.log $(BIN)/*.debug.xml

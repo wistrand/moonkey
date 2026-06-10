@@ -100,10 +100,10 @@ class AnalogView extends WatchUi.WatchFace {
     // W field "Steps + HR" mode (compW sentinel 104): two lines, each value
     // prefixed by a small icon (footprints / heart).
     private var _wStepsHr as Boolean = false;
-    // Second-tick track (secTickColor setting; -2 = none/off, default light grey on):
+    // Second-tick track (secTickColor setting; -2 = none/off, default dark grey on):
     // 48 short minor ticks + 12 longer U-shaped 5-min marks, baked into the radial
     // cache. Geometry precomputed once.
-    private var _secTickColor as Number = 0xAAAAAA;
+    private var _secTickColor as Number = 0x777777;
     private var _secTickHidden as Boolean = false;
     private var _secMinor as Lang.Array or Null = null; // 48 short tick lines [x1,y1,x2,y2]
     private var _secMajor as Lang.Array or Null = null; // 12 U marks [cx,cy,w,s,e,e1x,e1y,i1x,i1y,e2x,e2y,i2x,i2y]
@@ -120,6 +120,17 @@ class AnalogView extends WatchUi.WatchFace {
     private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
 
     private var _isSleeping as Boolean = false;
+    // Cadence-based recovery of a stuck _isSleeping. There is no API to query power
+    // mode (DeviceSettings has no flag, WatchFace has no query), and a dropped
+    // onExitSleep (a known AMOLED/fenix quirk) otherwise strands the face in the
+    // low-power draw forever. We infer the real mode from onUpdate frequency: ~1 Hz
+    // awake vs once/min asleep.
+    private var _lastUpdateMs as Number = -1;    // System.getTimer() at last onUpdate (-1 = none yet)
+    private var _fastRunStartMs as Number = -1;  // start of the current run of fast (<30 s) intervals (-1 = none)
+    // One-shot: defer the next moon bake off a wake/cold frame (the bake is heavy and
+    // can overrun the wake power budget, throttling the device back to low power -- the
+    // symptom seen just after install). Default true so the first paint defers.
+    private var _deferBake as Boolean = true;
     private var _vectorFont as Graphics.VectorFont or Null = null;
     private var _labelFont as Graphics.VectorFont or Null = null; // tiny N/S field labels
     private var _vectorFontTried as Boolean = false;
@@ -158,6 +169,33 @@ class AnalogView extends WatchUi.WatchFace {
     //! Redraw the whole face. Called once per second when awake and once per
     //! minute in low-power (sleep) mode.
     function onUpdate(dc as Graphics.Dc) as Void {
+        // Recover from a stuck sleep flag (a dropped onExitSleep leaves the face in the
+        // low-power draw forever; there is no API to query power mode). Infer it from the
+        // onUpdate stream: a genuinely-awake watch delivers *continuous* fast updates,
+        // whereas low power delivers only a short burst (~1.5 s of a few updates) once a
+        // minute -- and the sleep transition fires a similar burst. So counting fast
+        // frames is fooled every minute; instead require the run of consecutive fast
+        // (<30 s apart) intervals to last several seconds, which only a truly awake
+        // stream reaches. A long gap (or a negative delta from a timer wrap) breaks the
+        // run. (Measured in the sim: awake ~2 Hz; low-power burst ~1.5 s then a ~58 s gap.)
+        var nowMs = System.getTimer();
+        if (_lastUpdateMs >= 0) {
+            var dms = nowMs - _lastUpdateMs;
+            if (dms >= 0 && dms < 30000) {
+                if (_fastRunStartMs < 0) {  // run starts at the earlier of the two frames
+                    _fastRunStartMs = _lastUpdateMs;
+                }
+            } else {
+                _fastRunStartMs = -1;
+            }
+        }
+        _lastUpdateMs = nowMs;
+        if (_isSleeping && _fastRunStartMs >= 0 && (nowMs - _fastRunStartMs) >= 5000) {
+            _isSleeping = false;
+            _deferBake = true;  // keep the now-needed moon bake off this recovery frame
+            _fastRunStartMs = -1;
+        }
+
         var width = dc.getWidth();
         var height = dc.getHeight();
         var cx = width / 2;
@@ -248,7 +286,20 @@ class AnalogView extends WatchUi.WatchFace {
     private function drawMoon(dc as Graphics.Dc, cx as Number, cy as Number, r as Number, phase as Float) as Void {
         var bucket = (Time.now().value() / 3600).toNumber(); // re-bake hourly
         var buf = (_moonBuf != null) ? _moonBuf.get() : null;
-        if (buf == null || bucket != _moonBucket) {
+        var needsBake = (buf == null) || (bucket != _moonBucket);
+        if (needsBake && _deferBake) {
+            // Keep the heavy bake off the first frame after a wake / cold start: draw
+            // the existing buffer if we have one (hourly re-bake -- 1 frame stale is
+            // invisible), or nothing this frame (cold start / purge: no buffer yet),
+            // and bake on the next frame. One-shot, so at most one frame is deferred.
+            _deferBake = false;
+            WatchUi.requestUpdate();
+            if (buf != null) {
+                dc.drawBitmap(cx - r, cy - r, buf);
+            }
+            return;
+        }
+        if (needsBake) {
             _moonBucket = bucket;
             buf = bakeMoon(r, phase);
         }
@@ -598,7 +649,7 @@ class AnalogView extends WatchUi.WatchFace {
         _swOff = false;
         _skipLabels = false;
         _secTickHidden = false;
-        _secTickColor = 0xAAAAAA;
+        _secTickColor = 0x777777;
         _gradientOn = true;
         _smallValues = false;
         _metalHands = false;
@@ -647,7 +698,7 @@ class AnalogView extends WatchUi.WatchFace {
                     var sv = stc as Number;
                     if (sv == -2) {            // -2 = none/off
                         _secTickHidden = true;
-                    } else if (sv != -1) {    // -1 = default (keep light grey); else a colour
+                    } else if (sv != -1) {    // -1 = default (keep dark grey); else a colour
                         _secTickColor = sv;
                     }
                 }
@@ -2003,11 +2054,14 @@ class AnalogView extends WatchUi.WatchFace {
 
     function onEnterSleep() as Void {
         _isSleeping = true;
+        _fastRunStartMs = -1;  // break the awake fast run so the post-sleep burst can't re-wake
         WatchUi.requestUpdate();
     }
 
     function onExitSleep() as Void {
         _isSleeping = false;
+        _deferBake = true;  // keep the first post-wake moon bake off this frame
+        _fastRunStartMs = -1;
         WatchUi.requestUpdate();
     }
 }

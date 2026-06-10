@@ -43,6 +43,26 @@
     <string id="setCompNW">NW field (time/position)</string>
     <string id="setCompW">W field (weather)</string>
     <string id="setCompE">E field (time)</string>
+    <!-- Setting descriptions (shown as help text in Garmin Connect; also the source
+         for the generated settings doc). -->
+    <string id="prAccent">Colour of the hands, hour marks, and the day/night arc.</string>
+    <string id="prData">Colour of the data readouts, weather glyph, wind barb, and precip bar.</string>
+    <string id="prMoonArc">Colour of the arc tracing the moon's time above the horizon. None hides it.</string>
+    <string id="prMoonImage">Picture at the dial centre, still phase-shaded and tilted like the moon.</string>
+    <string id="prText">Custom text shown when the N field is set to Show Text.</string>
+    <string id="prSkipLabels">Hide the small grey label on a W or E complication and centre its value.</string>
+    <string id="prSecTicks">Colour of the minute/second tick marks around the edge. None hides them.</string>
+    <string id="prRadial">Show the soft gradient arcs behind the diagonal data fields.</string>
+    <string id="prSmall">Draw the data values in a smaller font.</string>
+    <string id="prMetal">Give the accent-coloured hands a brushed-metal gradient.</string>
+    <string id="prTz">Second timezone for the SW corner clock, with automatic DST. None hides it.</string>
+    <string id="prCompSE">Lower-right field: pick a complication, or hide it.</string>
+    <string id="prCompNE">Upper-right field: pick a complication, or hide it.</string>
+    <string id="prCompN">Top field: a complication, custom Text, inline Weather, or hidden.</string>
+    <string id="prCompS">Bottom field: a complication, Persian Solar, inline Weather, or hidden.</string>
+    <string id="prCompNW">Upper-left field: pick a complication, or hide it.</string>
+    <string id="prCompW">Left field: Weather widget, Steps + Heart Rate, a complication, or hidden.</string>
+    <string id="prCompE">Right field: Date + time, Persian Solar, Date + Weekday, a complication, or hidden.</string>
     <string id="optDefault">Default</string>
     <string id="optNone">None (off)</string>
     <string id="optMoon">Moon</string>

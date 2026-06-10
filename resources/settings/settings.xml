@@ -8,7 +8,7 @@
            100 MODE_PERSIAN (E,S) · 101 MODE_TEXT (N) · 102 MODE_WEATHER (N,S)
            103 MODE_DATEWD (E)    · 104 MODE_STEPSHR (W) -->
 
-    <setting propertyKey="@Properties.accentColor" title="@Strings.setAccent">
+    <setting propertyKey="@Properties.accentColor" title="@Strings.setAccent" prompt="@Strings.prAccent">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="0xFFAA00">@Strings.colAmber</listEntry>
@@ -24,7 +24,7 @@
         </settingConfig>
     </setting>
 
-    <setting propertyKey="@Properties.dataColor" title="@Strings.setDataColor">
+    <setting propertyKey="@Properties.dataColor" title="@Strings.setDataColor" prompt="@Strings.prData">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="0xAAAAAA">@Strings.colLtGray</listEntry>
@@ -35,7 +35,7 @@
             <listEntry value="0x00DDFF">@Strings.colCyan</listEntry>
         </settingConfig>
     </setting>
-    <setting propertyKey="@Properties.moonArcColor" title="@Strings.setMoonArc">
+    <setting propertyKey="@Properties.moonArcColor" title="@Strings.setMoonArc" prompt="@Strings.prMoonArc">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
@@ -45,7 +45,7 @@
             <listEntry value="0xFFAA00">@Strings.colAmber</listEntry>
         </settingConfig>
     </setting>
-    <setting propertyKey="@Properties.moonImage" title="@Strings.setMoonImage">
+    <setting propertyKey="@Properties.moonImage" title="@Strings.setMoonImage" prompt="@Strings.prMoonImage">
         <settingConfig type="list">
             <listEntry value="0">@Strings.optMoon</listEntry>
             <listEntry value="1">@Strings.optCat</listEntry>
@@ -54,13 +54,13 @@
             <listEntry value="4">@Strings.optSeal</listEntry>
         </settingConfig>
     </setting>
-    <setting propertyKey="@Properties.text" title="@Strings.setText">
+    <setting propertyKey="@Properties.text" title="@Strings.setText" prompt="@Strings.prText">
         <settingConfig type="alphaNumeric" />
     </setting>
-    <setting propertyKey="@Properties.skipLabels" title="@Strings.setSkipLabels">
+    <setting propertyKey="@Properties.skipLabels" title="@Strings.setSkipLabels" prompt="@Strings.prSkipLabels">
         <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.secTickColor" title="@Strings.setSecTicks">
+    <setting propertyKey="@Properties.secTickColor" title="@Strings.setSecTicks" prompt="@Strings.prSecTicks">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
@@ -70,17 +70,17 @@
             <listEntry value="0xFFAA00">@Strings.colAmber</listEntry>
         </settingConfig>
     </setting>
-    <setting propertyKey="@Properties.radialGradient" title="@Strings.setRadialGradient">
+    <setting propertyKey="@Properties.radialGradient" title="@Strings.setRadialGradient" prompt="@Strings.prRadial">
         <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.smallValues" title="@Strings.setSmallValues">
+    <setting propertyKey="@Properties.smallValues" title="@Strings.setSmallValues" prompt="@Strings.prSmall">
         <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.metalHands" title="@Strings.setMetalHands">
+    <setting propertyKey="@Properties.metalHands" title="@Strings.setMetalHands" prompt="@Strings.prMetal">
         <settingConfig type="boolean" />
     </setting>
 
-    <setting propertyKey="@Properties.tz" title="@Strings.setTz">
+    <setting propertyKey="@Properties.tz" title="@Strings.setTz" prompt="@Strings.prTz">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
@@ -104,7 +104,7 @@
         </settingConfig>
     </setting>
 
-    <setting propertyKey="@Properties.compSE" title="@Strings.setCompSE">
+    <setting propertyKey="@Properties.compSE" title="@Strings.setCompSE" prompt="@Strings.prCompSE">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
@@ -114,7 +114,7 @@
         </settingConfig>
     </setting>
 
-    <setting propertyKey="@Properties.compNE" title="@Strings.setCompNE">
+    <setting propertyKey="@Properties.compNE" title="@Strings.setCompNE" prompt="@Strings.prCompNE">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
@@ -124,7 +124,7 @@
         </settingConfig>
     </setting>
 
-    <setting propertyKey="@Properties.compN" title="@Strings.setCompN">
+    <setting propertyKey="@Properties.compN" title="@Strings.setCompN" prompt="@Strings.prCompN">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
@@ -144,7 +144,7 @@
         </settingConfig>
     </setting>
 
-    <setting propertyKey="@Properties.compS" title="@Strings.setCompS">
+    <setting propertyKey="@Properties.compS" title="@Strings.setCompS" prompt="@Strings.prCompS">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
@@ -164,7 +164,7 @@
         </settingConfig>
     </setting>
 
-    <setting propertyKey="@Properties.compNW" title="@Strings.setCompNW">
+    <setting propertyKey="@Properties.compNW" title="@Strings.setCompNW" prompt="@Strings.prCompNW">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optDefault</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
@@ -176,7 +176,7 @@
             <listEntry value="19">@Strings.cBattery</listEntry>
         </settingConfig>
     </setting>
-    <setting propertyKey="@Properties.compW" title="@Strings.setCompW">
+    <setting propertyKey="@Properties.compW" title="@Strings.setCompW" prompt="@Strings.prCompW">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optWeather</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
@@ -186,7 +186,7 @@
             <listEntry value="19">@Strings.cBattery</listEntry>
         </settingConfig>
     </setting>
-    <setting propertyKey="@Properties.compE" title="@Strings.setCompE">
+    <setting propertyKey="@Properties.compE" title="@Strings.setCompE" prompt="@Strings.prCompE">
         <settingConfig type="list">
             <listEntry value="-1">@Strings.optTime</listEntry>
             <listEntry value="-2">@Strings.optNone</listEntry>
