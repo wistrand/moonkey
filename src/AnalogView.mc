@@ -109,9 +109,13 @@ class AnalogView extends WatchUi.WatchFace {
     private var _secMajor as Lang.Array or Null = null; // 12 U marks [cx,cy,w,s,e,e1x,e1y,i1x,i1y,e2x,e2y,i2x,i2y]
     // Radial gradient arcs on/off (radialGradient setting, default on).
     private var _gradientOn as Boolean = true;
-    // "Small values" (smallValues setting): draw the non-radial values in the 0.8x
-    // vector font (_labelFont) instead of their normal bitmap font. Off == exactly as before.
-    private var _smallValues as Boolean = false;
+    // "Small values" (smallValuesN/E/S/W settings): per-field toggle to draw that
+    // cardinal/side field's value in the 0.8x vector font (_labelFont) instead of its
+    // normal bitmap font. Off == exactly as before. Resolved per slot via smallForSlot().
+    private var _smallValuesN as Boolean = false;
+    private var _smallValuesS as Boolean = false;
+    private var _smallValuesE as Boolean = false;
+    private var _smallValuesW as Boolean = false;
     // "Metal hands" (metalHands setting, default off): give the accent-coloured hands a
     // cylindrical gradient via nested polys (dark edges -> bright centre). Solid when off
     // or asleep.
@@ -655,7 +659,10 @@ class AnalogView extends WatchUi.WatchFace {
         _secTickHidden = false;
         _secTickColor = 0x777777;
         _gradientOn = true;
-        _smallValues = false;
+        _smallValuesN = false;
+        _smallValuesS = false;
+        _smallValuesE = false;
+        _smallValuesW = false;
         _metalHands = false;
         _nsMarkers = false;
         setCompDefaults();
@@ -711,9 +718,21 @@ class AnalogView extends WatchUi.WatchFace {
                 if (rg != null) {
                     _gradientOn = rg as Boolean;
                 }
-                var sv2 = Application.Properties.getValue("smallValues");
-                if (sv2 != null) {
-                    _smallValues = sv2 as Boolean;
+                var svN = Application.Properties.getValue("smallValuesN");
+                if (svN != null) {
+                    _smallValuesN = svN as Boolean;
+                }
+                var svS = Application.Properties.getValue("smallValuesS");
+                if (svS != null) {
+                    _smallValuesS = svS as Boolean;
+                }
+                var svE = Application.Properties.getValue("smallValuesE");
+                if (svE != null) {
+                    _smallValuesE = svE as Boolean;
+                }
+                var svW = Application.Properties.getValue("smallValuesW");
+                if (svW != null) {
+                    _smallValuesW = svW as Boolean;
                 }
                 var mh = Application.Properties.getValue("metalHands");
                 if (mh != null) {
@@ -1404,7 +1423,7 @@ class AnalogView extends WatchUi.WatchFace {
                     && cond.precipitationChance >= 20) {
                 drawPrecipBar(dc, leftX, cy + 3, radius * 0.18, cond.precipitationChance);
             }
-            drawValue(dc, leftX, cy + 22, temperatureText());
+            drawValue(dc, leftX, cy + 22, temperatureText(), SLOT_W);
             // Further left: wind barb (interactive only; skip light/calm wind < 4 m/s).
             if (!_isSleeping && cond != null && cond.windSpeed != null && cond.windBearing != null
                     && cond.windSpeed >= 4.0) {
@@ -1423,9 +1442,9 @@ class AnalogView extends WatchUi.WatchFace {
         } else if (_ePersian) {
             // Persian Solar: Jalali date (Tehran's date) above Tehran time.
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(rightX, cy - 16, vfont(Graphics.FONT_XTINY), persianDateText(),
+            dc.drawText(rightX, cy - 16, vfont(Graphics.FONT_XTINY, SLOT_E), persianDateText(),
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-            drawValue(dc, rightX, cy + 22, tehranTimeText());
+            drawValue(dc, rightX, cy + 22, tehranTimeText(), SLOT_E);
         } else if (_eDateWeekday) {
             // Date over the 3-letter weekday.
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
@@ -1434,17 +1453,17 @@ class AnalogView extends WatchUi.WatchFace {
                 // W is the small two-line steps+HR composite: match it so E and W
                 // align -- both lines small, persian-style padding (fh*0.5).
                 var dy = dc.getFontHeight(Graphics.FONT_XTINY) * 0.5;
-                dc.drawText(rightX, cy - dy, vfont(Graphics.FONT_XTINY), dateText(), j);
-                dc.drawText(rightX, cy + dy, vfont(Graphics.FONT_XTINY), weekdayText(), j);
+                dc.drawText(rightX, cy - dy, vfont(Graphics.FONT_XTINY, SLOT_E), dateText(), j);
+                dc.drawText(rightX, cy + dy, vfont(Graphics.FONT_XTINY, SLOT_E), weekdayText(), j);
             } else {
-                dc.drawText(rightX, cy - 16, vfont(Graphics.FONT_XTINY), dateText(), j);
-                drawValue(dc, rightX, cy + 22, weekdayText());
+                dc.drawText(rightX, cy - 16, vfont(Graphics.FONT_XTINY, SLOT_E), dateText(), j);
+                drawValue(dc, rightX, cy + 22, weekdayText(), SLOT_E);
             }
         } else if (_compId[SLOT_E] == null) {
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(rightX, cy - 16, vfont(Graphics.FONT_XTINY), dateText(),
+            dc.drawText(rightX, cy - 16, vfont(Graphics.FONT_XTINY, SLOT_E), dateText(),
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-            drawValue(dc, rightX, cy + 22, timeOfDayText());
+            drawValue(dc, rightX, cy + 22, timeOfDayText(), SLOT_E);
         } else {
             drawSideComp(dc, rightX, cy - 16, _skipLabels ? cy : cy + 22, SLOT_E);
         }
@@ -1467,7 +1486,7 @@ class AnalogView extends WatchUi.WatchFace {
                 dc.drawText(x, topY, Graphics.FONT_XTINY, lbl, just);
             }
         }
-        drawValue(dc, x, valY, slotValue(slot));
+        drawValue(dc, x, valY, slotValue(slot), slot);
     }
 
     //! Tehran moment (UTC+3:30, no DST -- Iran dropped DST in 2022) as a Gregorian Info.
@@ -1490,18 +1509,28 @@ class AnalogView extends WatchUi.WatchFace {
         return Lang.format("$1$:$2$", [t.hour.format("%d"), t.min.format("%02d")]);
     }
 
-    //! Draw a single value centered at (x, y).
-    private function drawValue(dc as Graphics.Dc, x as Numeric, y as Numeric, value as String) as Void {
+    //! Draw a single value centered at (x, y) for the given field slot (selects the
+    //! per-field small-font toggle).
+    private function drawValue(dc as Graphics.Dc, x as Numeric, y as Numeric, value as String, slot as Number) as Void {
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, y, vfont(Graphics.FONT_TINY), value,
+        dc.drawText(x, y, vfont(Graphics.FONT_TINY, slot), value,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    //! The font to draw a value in: _labelFont (0.8x vector) when "small values" is
-    //! on and a vector font is available, else the given font -- so when the option
-    //! is off this is the identity and rendering is exactly as before.
-    private function vfont(current as Graphics.FontType) as Graphics.FontType or Graphics.VectorFont {
-        return (_smallValues && _labelFont != null) ? _labelFont : current;
+    //! Whether the given field slot draws its value in the small font.
+    private function smallForSlot(slot as Number) as Boolean {
+        if (slot == SLOT_N) { return _smallValuesN; }
+        if (slot == SLOT_S) { return _smallValuesS; }
+        if (slot == SLOT_E) { return _smallValuesE; }
+        if (slot == SLOT_W) { return _smallValuesW; }
+        return false;
+    }
+
+    //! The font to draw a value in: _labelFont (0.8x vector) when this field's "small
+    //! values" toggle is on and a vector font is available, else the given font -- so
+    //! when the toggle is off this is the identity and rendering is exactly as before.
+    private function vfont(current as Graphics.FontType, slot as Number) as Graphics.FontType or Graphics.VectorFont {
+        return (smallForSlot(slot) && _labelFont != null) ? _labelFont : current;
     }
 
     //! Thin horizontal precip-chance bar (amber fill over a dark track) centred
@@ -1533,14 +1562,14 @@ class AnalogView extends WatchUi.WatchFace {
         if (slot == SLOT_N && _nText) {
             // "Show text": just the user's string, nudged up a bit; no value/heart/label.
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(x, y - textH * 0.25, vfont(cardFont), _text,
+            dc.drawText(x, y - textH * 0.25, vfont(cardFont, slot), _text,
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             return;
         }
         if (_compWeather[slot]) {
             // "Weather": icon + temperature on one line, no wind barb, no label;
             // nudged a line clear of centre (up on N, down on S).
-            drawWeatherInline(dc, x, y + (isNorth ? -textH * 0.6 : textH * 0.6), textH, vfont(cardFont));
+            drawWeatherInline(dc, x, y + (isNorth ? -textH * 0.6 : textH * 0.6), textH, vfont(cardFont, slot));
             return;
         }
         if (slot == SLOT_S && _sPersian) {
@@ -1565,7 +1594,7 @@ class AnalogView extends WatchUi.WatchFace {
         }
 
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, vy-vvy, vfont(cardFont), slotValue(slot),
+        dc.drawText(x, vy-vvy, vfont(cardFont, slot), slotValue(slot),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         if (t == Complications.COMPLICATION_TYPE_HEART_RATE) {
@@ -1607,8 +1636,8 @@ class AnalogView extends WatchUi.WatchFace {
         var fh = dc.getFontHeight(Graphics.FONT_XTINY);
         var just = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, y - fh * 0.5, vfont(Graphics.FONT_XTINY), persianDateText(), just);
-        dc.drawText(x, y + fh * 0.5, vfont(Graphics.FONT_XTINY), tehranTimeText(), just);
+        dc.drawText(x, y - fh * 0.5, vfont(Graphics.FONT_XTINY, SLOT_S), persianDateText(), just);
+        dc.drawText(x, y + fh * 0.5, vfont(Graphics.FONT_XTINY, SLOT_S), tehranTimeText(), just);
     }
 
     //! W "Steps + HR" composite: heart rate (top) over steps (bottom), two
@@ -1623,7 +1652,7 @@ class AnalogView extends WatchUi.WatchFace {
         var lx = x - 8;   // nudge the whole composite a bit left
         var hsize = fh * 0.6;
         var gap = 4;
-        var vf = vfont(Graphics.FONT_XTINY);
+        var vf = vfont(Graphics.FONT_XTINY, SLOT_W);
         var hw = dc.getTextWidthInPixels(hr, vf);
         var left = lx - (hsize + gap + hw) / 2.0;   // centre the heart+value group at lx
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);

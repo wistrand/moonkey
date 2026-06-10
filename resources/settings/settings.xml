@@ -73,7 +73,16 @@
     <setting propertyKey="@Properties.radialGradient" title="@Strings.setRadialGradient" prompt="@Strings.prRadial">
         <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.smallValues" title="@Strings.setSmallValues" prompt="@Strings.prSmall">
+    <setting propertyKey="@Properties.smallValuesN" title="@Strings.setSmallValuesN" prompt="@Strings.prSmall">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.smallValuesS" title="@Strings.setSmallValuesS" prompt="@Strings.prSmall">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.smallValuesE" title="@Strings.setSmallValuesE" prompt="@Strings.prSmall">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.smallValuesW" title="@Strings.setSmallValuesW" prompt="@Strings.prSmall">
         <settingConfig type="boolean" />
     </setting>
     <setting propertyKey="@Properties.metalHands" title="@Strings.setMetalHands" prompt="@Strings.prMetal">

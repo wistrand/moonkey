@@ -15,7 +15,10 @@
     <property id="skipLabels" type="boolean">false</property>
     <property id="secTickColor" type="number">-2</property>
     <property id="radialGradient" type="boolean">true</property>
-    <property id="smallValues" type="boolean">false</property>
+    <property id="smallValuesN" type="boolean">false</property>
+    <property id="smallValuesS" type="boolean">false</property>
+    <property id="smallValuesE" type="boolean">false</property>
+    <property id="smallValuesW" type="boolean">false</property>
     <property id="metalHands" type="boolean">false</property>
     <property id="nsMarkers" type="boolean">false</property>
     <property id="tz" type="number">-1</property>

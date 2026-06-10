@@ -87,8 +87,8 @@ gallery: ## Regenerate the docs/ landing-page screenshots (fenix843mm, transpare
 	@# moonImage=0 so auto-shot clears the sim's stored .SET (otherwise it reuses the
 	@# previous run's settings and the "default" comes out as whatever ran last).
 	moonImage=0 ./auto-shot.sh -t fenix843mm docs/cfg-default.png
-	nsMarkers=true skipLabels=true compN=102 compS=100 compW=104 compE=103 moonImage=1 compNW=-2 compNE=-2 compSE=-2 tz=-2 accentColor=16755200 secTickColor=0x777777 radialGradient=false smallValues=true metalHands=true ./auto-shot.sh -t fenix843mm docs/cfg-loaded.png
-	moonImage=2 nsMarkers=true accentColor=0x00DDFF metalHands=true smallValues=true radialGradient=false secTickColor=-2 ./auto-shot.sh -t fenix843mm docs/cfg-fox.png
+	nsMarkers=true skipLabels=true compN=102 compS=100 compW=104 compE=103 moonImage=1 compNW=-2 compNE=-2 compSE=-2 tz=-2 accentColor=16755200 secTickColor=0x777777 radialGradient=false smallValuesN=true smallValuesS=true smallValuesE=true smallValuesW=true metalHands=true ./auto-shot.sh -t fenix843mm docs/cfg-loaded.png
+	moonImage=2 nsMarkers=true accentColor=0x00DDFF metalHands=true smallValuesN=true smallValuesS=true smallValuesE=true smallValuesW=true radialGradient=false secTickColor=-2 ./auto-shot.sh -t fenix843mm docs/cfg-fox.png
 	moonImage=3 nsMarkers=true accentColor=0xFFFFFF secTickColor=0xFFFFFF radialGradient=false compNE=-2 compSE=-2 compNW=-2 tz=-2 compN=-2 compS=-2 ./auto-shot.sh -t fenix843mm docs/cfg-minimal.png
 
 clean: ## Remove build artifacts

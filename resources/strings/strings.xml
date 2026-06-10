@@ -33,7 +33,10 @@
     <string id="setSkipLabels">Skip E/W Labels</string>
     <string id="setSecTicks">Second Ticks</string>
     <string id="setRadialGradient">Radial Gradient</string>
-    <string id="setSmallValues">Small Value Font</string>
+    <string id="setSmallValuesN">Small Font: N (top)</string>
+    <string id="setSmallValuesS">Small Font: S (bottom)</string>
+    <string id="setSmallValuesE">Small Font: E (right)</string>
+    <string id="setSmallValuesW">Small Font: W (left)</string>
     <string id="setMetalHands">Metal Hands</string>
     <string id="setNsMarkers">N/S Markers</string>
     <string id="setTz">Timezone (SW field)</string>
@@ -54,7 +57,7 @@
     <string id="prSkipLabels">Hide the small grey label on a W or E complication and centre its value.</string>
     <string id="prSecTicks">Colour of the minute/second tick marks around the edge. None hides them.</string>
     <string id="prRadial">Show the soft gradient arcs behind the diagonal data fields.</string>
-    <string id="prSmall">Draw the data values in a smaller font.</string>
+    <string id="prSmall">Draw this field's value in a smaller font.</string>
     <string id="prMetal">Give the accent-coloured hands a brushed-metal gradient.</string>
     <string id="prNsMarkers">Mark south and north on the day/night ring at the sun's meridian crossing (the daylight-arc midpoint).</string>
     <string id="prTz">Second timezone for the SW corner clock, with automatic DST. None hides it.</string>

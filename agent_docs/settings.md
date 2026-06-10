@@ -94,8 +94,23 @@ Default: **None (off)**
 
 Toggle — default **On**.
 
-## Small Value Font
-`smallValues` — Draw the data values in a smaller font.
+## Small Font: N (top)
+`smallValuesN` — Draw this field's value in a smaller font.
+
+Toggle — default **Off**.
+
+## Small Font: S (bottom)
+`smallValuesS` — Draw this field's value in a smaller font.
+
+Toggle — default **Off**.
+
+## Small Font: E (right)
+`smallValuesE` — Draw this field's value in a smaller font.
+
+Toggle — default **Off**.
+
+## Small Font: W (left)
+`smallValuesW` — Draw this field's value in a smaller font.
 
 Toggle — default **Off**.
 
