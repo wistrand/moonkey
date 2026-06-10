@@ -79,6 +79,9 @@
     <setting propertyKey="@Properties.metalHands" title="@Strings.setMetalHands" prompt="@Strings.prMetal">
         <settingConfig type="boolean" />
     </setting>
+    <setting propertyKey="@Properties.nsMarkers" title="@Strings.setNsMarkers" prompt="@Strings.prNsMarkers">
+        <settingConfig type="boolean" />
+    </setting>
 
     <setting propertyKey="@Properties.tz" title="@Strings.setTz" prompt="@Strings.prTz">
         <settingConfig type="list">

@@ -80,5 +80,16 @@ Use **Actual Time** (self/exclusive), not Total.
 - **Sun ring (~5 ms):** still drawn live (`drawArc`), in `drawDayNightArc`, awake-only. It could
   **ride the same cache** — it's static like the gradient arcs — but it sits in a different
   function and render position (radius 0.38, over the central ring), so folding it in needs care
-  with layering. Not yet done.
+  with layering. Not yet done. The optional **N/S compass markers** (`drawCompassMark`) draw live
+  right after it (one `fillPolygon` + three `drawLine`s); negligible, and likewise bake-able later.
 - **`clear` (~5.4 ms):** only avoidable via partial-update tricks (not feasible at 128 KB).
+
+## Wake-frame cost (not steady-state)
+The device (unlike the sim) enforces a per-`onUpdate` execution budget. The heaviest one-off is
+the **moon bake** (hourly, and on cold start / pool purge): two pool allocations + a per-scanline
+shading loop + an affine rotate-blit. If it lands on the first frame after a wake — especially a
+cold start, i.e. just after install when `_moonBuf == null` — it can overrun the wake budget and
+the OS throttles back to low power (the face appears "stuck" in the sleeping draw). It is therefore
+**deferred one frame** (`_deferBake`): draw the existing/empty buffer, `requestUpdate`, bake next
+frame. The radial cache also fully re-renders on a sleep transition (its key holds the sleep flag),
+so a wake frame still pays that ~28 ms; splitting it from the bake keeps each frame under budget.

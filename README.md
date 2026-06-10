@@ -18,13 +18,14 @@ data fields.
   traces the Moon's above-horizon span (moonrise→moonset).
 - **24-hour day/night ring** — midnight at top, noon at bottom; an amber arc spans daylight
   (computed sunrise→sunset), a pointer marks the current time, and a gradient "sun ring" peaks at
-  solar noon.
+  the sun's meridian crossing. Optional **N/S compass markers** mark south and north on the ring
+  (where the sun transits — hemisphere-aware).
 - **Hands differentiated by silhouette** — hour is a tapered baton ending in an open ring, minute
   a tapered lance to a point, second a white shaft with an amber tip (optionally with a brushed-metal
   gradient). The slow hands creep smoothly; the seconds tick (1 Hz redraw budget).
 - **Configurable** (Garmin Connect app settings) — accent & data colours, **moon-arc colour**, the
   **moon image** (moon, cat, fox, polar bear or seal), optional **metal-look hands**, a **second-tick
-  track** (colour, or off), a **radial-gradient** toggle, a **small-value font**, a world **timezone**
+  track** (colour, or off — off by default), **N/S markers**, a **radial-gradient** toggle, a **small-value font**, a world **timezone**
   (17 zones, automatic DST), and **seven complication slots** (five data fields + weather + clock):
   pick a complication per slot, **hide any**, or choose a special mode — **Persian Solar date + Tehran
   clock** (E or S), **weather** icon+temp (N/S), **date + weekday** (E), **steps + heart rate** (W), or
@@ -34,7 +35,9 @@ data fields.
   icon (clear / cloud / rain / snow / storm / fog), temperature, a precipitation-chance bar, and a
   meteorological **wind barb** (knots).
 - **Always-on aware** — keeps colours (the OS dims and pixel-shifts) but drops decorative,
-  pixel-hungry elements (Moon, second hand, sun ring, wind barb, …) in low-power mode.
+  pixel-hungry elements (Moon, second hand, sun ring, N/S markers, wind barb, …) in low-power mode.
+  Self-corrects if the watch ever drops the wake event (a known AMOLED quirk), so it can't get stuck
+  dimmed.
 
 ## Targets
 

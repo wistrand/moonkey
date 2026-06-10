@@ -78,7 +78,7 @@ Toggle — default **Off**.
 ## Second Ticks
 `secTickColor` — Colour of the minute/second tick marks around the edge. None hides them.
 
-Default: **Default**
+Default: **None (off)**
 
 | Option | Value |
 |---|---|
@@ -101,6 +101,11 @@ Toggle — default **Off**.
 
 ## Metal Hands
 `metalHands` — Give the accent-coloured hands a brushed-metal gradient.
+
+Toggle — default **Off**.
+
+## N/S Markers
+`nsMarkers` — Mark south and north on the day/night ring at the sun's meridian crossing (the daylight-arc midpoint).
 
 Toggle — default **Off**.
 

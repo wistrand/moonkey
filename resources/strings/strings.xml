@@ -35,6 +35,7 @@
     <string id="setRadialGradient">Radial Gradient</string>
     <string id="setSmallValues">Small Value Font</string>
     <string id="setMetalHands">Metal Hands</string>
+    <string id="setNsMarkers">N/S Markers</string>
     <string id="setTz">Timezone (SW field)</string>
     <string id="setCompSE">SE field (height)</string>
     <string id="setCompNE">NE field (energy)</string>
@@ -55,6 +56,7 @@
     <string id="prRadial">Show the soft gradient arcs behind the diagonal data fields.</string>
     <string id="prSmall">Draw the data values in a smaller font.</string>
     <string id="prMetal">Give the accent-coloured hands a brushed-metal gradient.</string>
+    <string id="prNsMarkers">Mark south and north on the day/night ring at the sun's meridian crossing (the daylight-arc midpoint).</string>
     <string id="prTz">Second timezone for the SW corner clock, with automatic DST. None hides it.</string>
     <string id="prCompSE">Lower-right field: pick a complication, or hide it.</string>
     <string id="prCompNE">Upper-right field: pick a complication, or hide it.</string>

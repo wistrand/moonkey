@@ -18,7 +18,7 @@ Moonkey is an analog watch face for AMOLED Garmin watches, built around a real p
 
 The Moon is shaded for tonight's exact phase and rotated to the true inclination it shows in your sky — the terminator tilts the way the real Moon does for your latitude and the time of night, not as a generic icon. A thin ring hugging the disc traces the Moon's time above the horizon, from moonrise to moonset.
 
-Around it, a 24-hour day/night ring puts midnight at the top and noon at the bottom, with an amber arc spanning daylight from your local sunrise to sunset and a pointer at the current time. A soft gradient sun ring brightens toward solar noon.
+Around it, a 24-hour day/night ring puts midnight at the top and noon at the bottom, with an amber arc spanning daylight from your local sunrise to sunset and a pointer at the current time. A soft gradient sun ring brightens toward midday, and optional markers point out south and north — the direction the sun crosses the meridian, worked out for your hemisphere.
 
 The hands are told apart by silhouette, not just length: the hour is a tapered baton ending in an open ring, the minute a tapered lance, and the second a white shaft tipped in amber.
 
@@ -27,7 +27,7 @@ The dial carries data fields you choose — heart rate, steps, calories, body ba
 Make it yours, all from Garmin Connect:
 - Accent and data colours, and the moon-arc colour (or hide the arc)
 - The central image — moon, cat, fox, polar bear or seal (each still shows the phase)
-- A brushed-metal finish for the hands, a ring of second tick marks (any colour, or off), and other display toggles
+- A brushed-metal finish for the hands, a ring of second tick marks (any colour, or off), south/north markers on the day-night ring, and other display toggles
 - A world timezone for the corner clock, with automatic daylight saving
 - Seven configurable fields — pick a complication for each, hide any, or choose a special mode: a Persian Solar date with the Tehran clock, a weather readout, the date with weekday, steps and heart rate, or your own custom text
 

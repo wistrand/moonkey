@@ -116,6 +116,10 @@ class AnalogView extends WatchUi.WatchFace {
     // cylindrical gradient via nested polys (dark edges -> bright centre). Solid when off
     // or asleep.
     private var _metalHands as Boolean = false;
+    // "N/S markers" (nsMarkers setting, default off): small compass triangles on the
+    // day/night ring at the sun's meridian crossing (daylight-arc midpoint) and its
+    // opposite -- filled = south, outline = north (hemisphere-flipped). AOD-dropped.
+    private var _nsMarkers as Boolean = false;
     private const RING_R_FRAC = 0.27;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
     private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
 
@@ -653,6 +657,7 @@ class AnalogView extends WatchUi.WatchFace {
         _gradientOn = true;
         _smallValues = false;
         _metalHands = false;
+        _nsMarkers = false;
         setCompDefaults();
         if (Toybox.Application has :Properties) {
             try {
@@ -713,6 +718,10 @@ class AnalogView extends WatchUi.WatchFace {
                 var mh = Application.Properties.getValue("metalHands");
                 if (mh != null) {
                     _metalHands = mh as Boolean;
+                }
+                var nsm = Application.Properties.getValue("nsMarkers");
+                if (nsm != null) {
+                    _nsMarkers = nsm as Boolean;
                 }
                 if (Toybox has :Complications) {
                     applyCompProp(SLOT_SE, "compSE");
@@ -1247,8 +1256,10 @@ class AnalogView extends WatchUi.WatchFace {
                 }
                 dc.drawLine(cx + tIn * ts, cy - tIn * tc, cx + tOut * ts, cy - tOut * tc);
             }
-            // Thin outer circle as a gradient ring, brightest at max sun = the
-            // clockwise midpoint of the daylight arc (matches the amber arc centre).
+            // The daylight-arc midpoint is solar transit (the clockwise midpoint of the
+            // daylight arc). At transit the sun crosses the meridian -- due south in the
+            // northern hemisphere, due north in the southern -- so the south direction is
+            // that midpoint, flipped 180 in the southern hemisphere.
             var peakDeg = hourToArcDegrees(12.0); // ~bottom when no sun data
             if (sr != null && ss != null) {
                 var dsr = hourToArcDegrees(localHour(sr));
@@ -1259,7 +1270,19 @@ class AnalogView extends WatchUi.WatchFace {
                 }
                 peakDeg = dsr - span / 2;
             }
-            drawSunRing(dc, cx, cy, (radius * 0.40).toNumber(), peakDeg);
+            // The gradient ring's bright side tracks the south marker (filled triangle).
+            var southDeg = observerSouthern() ? peakDeg + 180 : peakDeg;
+            drawSunRing(dc, cx, cy, (radius * 0.40).toNumber(), southDeg);
+
+            // Compass marks: south (filled) on the bright side, north (outline) opposite.
+            // Needs real sun data (else peakDeg is just civil noon at the bottom).
+            if (_nsMarkers && sr != null && ss != null) {
+                var ringOuter = (radius * 0.40).toNumber(); // the outer gradient (sun) ring
+                // Colours track the gradient ring's endpoints: bright (0xAA) at the
+                // peak/south, dark (0x55) at the opposite/north.
+                drawCompassMark(dc, cx, cy, ringOuter, southDeg, true, 0xAAAAAA);        // bright = south
+                drawCompassMark(dc, cx, cy, ringOuter, southDeg + 180, false, 0x555555); // dark = north
+            }
         }
 
         // Daylight arc (skipped if no sun data is available).
@@ -1296,6 +1319,44 @@ class AnalogView extends WatchUi.WatchFace {
             var g = (85 + level * 85).toNumber(); // dark gray (0x55) .. light gray (0xAA)
             dc.setColor((g << 16) | (g << 8) | g, Graphics.COLOR_TRANSPARENT);
             dc.drawArc(cx, cy, r, Graphics.ARC_COUNTER_CLOCKWISE, a0.toNumber(), a1.toNumber());
+        }
+    }
+
+    //! Small compass triangle whose base sits on the outer gradient ring at radius `r`
+    //! and drawArc-degree `deg`, pointing radially inward toward the dial. filled =
+    //! south, outline = north.
+    private function drawCompassMark(dc as Graphics.Dc, cx as Number, cy as Number, r as Number,
+            deg as Number, filled as Boolean, color as Number) as Void {
+        var a = deg * Math.PI / 180.0;
+        var ca = Math.cos(a);
+        var sa = Math.sin(a);
+        // radial-outward unit = (ca, -sa) in screen coords; tangential = (sa, ca).
+        var hw = r * 0.05;
+        // Pull the base centre in so the two corners (offset tangentially by hw) land
+        // exactly on the ring at radius r rather than at sqrt(r^2+hw^2) just beyond it.
+        var rBase = Math.sqrt((r * r - hw * hw).toFloat());
+        var rApex = r - r * 0.12; // apex pointing inward
+        var bx = cx + rBase * ca;
+        var by = cy - rBase * sa;
+        var apx = cx + rApex * ca;
+        var apy = cy - rApex * sa;
+        var b1x = bx + hw * sa;
+        var b1y = by + hw * ca;
+        var b2x = bx - hw * sa;
+        var b2y = by - hw * ca;
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        if (filled) {
+            // fillPolygon needs integer points (floats render edges only).
+            dc.fillPolygon([
+                [apx.toNumber(), apy.toNumber()],
+                [b1x.toNumber(), b1y.toNumber()],
+                [b2x.toNumber(), b2y.toNumber()]
+            ]);
+        } else {
+            dc.setPenWidth(1);
+            dc.drawLine(apx, apy, b1x, b1y);
+            dc.drawLine(b1x, b1y, b2x, b2y);
+            dc.drawLine(b2x, b2y, apx, apy);
         }
     }
 

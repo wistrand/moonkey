@@ -13,10 +13,11 @@
     <property id="moonImage" type="number">0</property>
     <property id="text" type="string"></property>
     <property id="skipLabels" type="boolean">false</property>
-    <property id="secTickColor" type="number">-1</property>
+    <property id="secTickColor" type="number">-2</property>
     <property id="radialGradient" type="boolean">true</property>
     <property id="smallValues" type="boolean">false</property>
     <property id="metalHands" type="boolean">false</property>
+    <property id="nsMarkers" type="boolean">false</property>
     <property id="tz" type="number">-1</property>
     <property id="compSE" type="number">-1</property>
     <property id="compNE" type="number">-1</property>
