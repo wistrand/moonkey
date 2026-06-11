@@ -5,16 +5,16 @@ Garmin Connect IQ watchface ("Moonkey") in Monkey C. Targets AMOLED: `marq2aviat
 **Full design: [agent_docs/architecture.md](agent_docs/architecture.md).** Profiling & per-frame budget: [agent_docs/perf-analysis.md](agent_docs/perf-analysis.md). Configurability research (accent colour / timezone, sideload constraints): [agent_docs/finding-config.md](agent_docs/finding-config.md).
 
 ## Layout
-- `manifest.xml`, `moonkey.jungle` at root. **Sources live in `src/`** (not the default `source/`); the jungle sets `base.sourcePath = src`.
+- `manifest.xml`, `moonkey.jungle` at root. **Sources live in `source/`** (the Connect IQ default); the jungle sets `base.sourcePath = source`.
 - **Three app identities** — a published app and a beta app **cannot share an id** (per the dev portal: a beta is un-publishable, production must re-upload under a new id). Each has its own manifest + jungle + name (id, not name, is the device identity, so all three coexist on a watch):
   - **Production** `ec31f7e162fb48578ddc754d58d040bb` — `manifest.xml`, "Moonkey", the **permanent public Store id** (freeze it, never regenerate, always the same dev key). `make package` → `bin/moonkey.iq`. `make run`/`build`/`all` also use it (id is irrelevant in the sim).
   - **Beta** `a3f1c2d4e5b649a78c0d1e2f3a4b5c6d` — `manifest-beta.xml`, "Moonkey Beta" (`@Strings.AppNameBeta`), the release-candidate channel uploaded to the portal's "Beta Apps". `make package-beta` → `bin/moonkey-beta.iq`.
   - **Dev** `6ca23839dbb243279c8d7b4d3fe9b35b` — `manifest-dev.xml`, "Moonkey Dev" (`@Strings.AppNameDev`), local sideload. `make install` → `bin/moonkey-dev-<dev>.prg`.
   - Never upload `manifest-dev.xml`; never reuse the beta id for the public release.
-- `src/MoonkeyApp.mc` — `AppBase`, returns the view.
-- `src/AnalogView.mc` — all the drawing + config (`WatchFace`).
-- `src/Astro.mc` — `module Astro`: pure moon/sun ephemeris (Meeus ch.47 + Schlyter sun), bright-limb tilt, iterated moonrise/set. The view passes location/time; verified against `solunar`.
-- `src/CalendarMath.mc` — `module Cal`: pure Gregorian/DST date math (weekday/Sunday/doy/`dstHours`) + `toJalali` (Gregorian→Solar Hijri/Persian, arithmetic 33-yr cycle).
+- `source/MoonkeyApp.mc` — `AppBase`, returns the view.
+- `source/AnalogView.mc` — all the drawing + config (`WatchFace`).
+- `source/Astro.mc` — `module Astro`: pure moon/sun ephemeris (Meeus ch.47 + Schlyter sun), bright-limb tilt, iterated moonrise/set. The view passes location/time; verified against `solunar`.
+- `source/CalendarMath.mc` — `module Cal`: pure Gregorian/DST date math (weekday/Sunday/doy/`dstHours`) + `toJalali` (Gregorian→Solar Hijri/Persian, arithmetic 33-yr cycle).
 - `resources/` — strings + launcher icon + moon photo. `bin/` — built `.prg`s (one per device). `agent_docs/` — design + research notes.
 - `scripts/setup-connectiq.sh` — one-time toolchain setup. `scripts/install.sh [device]` — sideload to a watch over MTP; `scripts/uninstall.sh [device|all]` — remove the sideloaded `.prg`(s) over MTP (the inverse; default removes all `moonkey-*.prg`). `scripts/screenshot.sh [--crop] [--transparent] [out.png]` — grab the sim window (`--crop` clips the menu header + status footer, applied before `--transparent`); `scripts/simrun.sh [device]` — build+run with settings overrides (env vars; used by `make run`); `scripts/auto-shot.sh [-t] [device] [out]` — build+run+wait-for-render+screenshot (`make shot`), and **honours the same env-var settings overrides as `scripts/simrun.sh`** (patches `properties.xml` + clears the `.SET` on restart, so e.g. `metalHands=true compW=104 make shot DEVICE=fenix843mm` shoots that config). `Makefile` — `make run`/`all`/`install`/`uninstall`/`package`/`shot`/`moon` (regenerates the moon bitmap from `data/moon-raw.jpg`)/`settings-doc` (regenerates `agent_docs/settings.md` via `scripts/gen-settings-doc.py`)/`gallery` (regenerates the `docs/` landing-page screenshots `cfg-*.png` — four representative settings combos on fenix843mm, transparent).
 

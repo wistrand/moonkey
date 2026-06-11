@@ -1,7 +1,7 @@
 project.manifest = manifest.xml
 
-# Sources live in ./src instead of the default ./source
-base.sourcePath = src
+# Sources in ./source (the Connect IQ default sourcePath).
+base.sourcePath = source
 base.resourcePath = resources
 
 # Per-device launcher icons at native sizes (clears the launcher-icon scale warning);

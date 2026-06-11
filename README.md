@@ -57,7 +57,7 @@ make uninstall                # remove sideloaded Moonkey from the watch (all bu
 make moon                     # regenerate the Moon bitmap from data/moon-raw.jpg
 ```
 
-Sources live in `src/` (`MoonkeyApp.mc`, `AnalogView.mc`, `Astro.mc`, `CalendarMath.mc`); `make` targets are in the `Makefile`. `make shot DEVICE=<id>` builds, runs, waits for the face to render and screenshots it; override any setting for a run via env vars, e.g. `moonImage=1 make run` (cat).
+Sources live in `source/` (`MoonkeyApp.mc`, `AnalogView.mc`, `Astro.mc`, `CalendarMath.mc`); `make` targets are in the `Makefile`. `make shot DEVICE=<id>` builds, runs, waits for the face to render and screenshots it; override any setting for a run via env vars, e.g. `moonImage=1 make run` (cat).
 
 ## Documentation
 

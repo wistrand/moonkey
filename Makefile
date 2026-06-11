@@ -19,7 +19,7 @@ JUNGLE   := moonkey.jungle
 DEV_JUNGLE := moonkey-dev.jungle
 BETA_JUNGLE := moonkey-beta.jungle
 BIN      := bin
-SRC      := $(wildcard src/*.mc) manifest.xml $(JUNGLE) $(wildcard resources/*/*) $(wildcard resources-launcher/*/*/*)
+SRC      := $(wildcard source/*.mc) manifest.xml $(JUNGLE) $(wildcard resources/*/*) $(wildcard resources-launcher/*/*/*)
 PRGS     := $(addprefix $(BIN)/moonkey-,$(addsuffix .prg,$(DEVICES)))
 
 # Moon bitmap: cropped from the lunar disc in data/moon-raw.jpg, circular-masked, 100px.

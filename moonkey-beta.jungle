@@ -3,7 +3,7 @@
 # to the dev portal's "Beta Apps". Used by `make package-beta`.
 project.manifest = manifest-beta.xml
 
-base.sourcePath = src
+base.sourcePath = source
 base.resourcePath = resources
 
 # Per-device launcher icons at native sizes (clears the launcher-icon scale warning);
