@@ -21,7 +21,7 @@ INSTALL=0
 if [ "${1:-}" = "--install" ]; then INSTALL=1; shift; fi
 
 DEVICE="${1:-marq2aviator}"
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROPS="$ROOT/resources/settings/properties.xml"
 KEY="$HOME/.connectiq/developer_key.der"
 SDKBIN="$("$HOME/go/bin/connect-iq-sdk-manager-cli" sdk current-path --bin)"
@@ -57,7 +57,7 @@ restore; trap - EXIT   # the .prg has baked the defaults; restore properties.xml
 
 if [ "$INSTALL" = 1 ]; then
     echo ">> sideload to watch"
-    "$ROOT/install.sh" "$DEVICE" "$PRG"
+    "$ROOT/scripts/install.sh" "$DEVICE" "$PRG"
     echo "installed $DEVICE (overrides: ${ov[*]:-none})"
     exit 0
 fi

@@ -58,7 +58,7 @@ setsid env GDK_BACKEND=x11 "$SDKBIN/simulator" >/tmp/ciqsim.log 2>&1 </dev/null 
 for i in $(seq 1 80); do ss -ltn 2>/dev/null | grep -q ':1234' && break; sleep 0.3; done
 
 # Blank baseline: the sim window with no app loaded yet (retry until it exists).
-for i in $(seq 1 12); do ./screenshot.sh "$TMP/base.png" >/dev/null 2>&1 && break; sleep 0.5; done
+for i in $(seq 1 12); do "$(dirname "$0")/screenshot.sh" "$TMP/base.png" >/dev/null 2>&1 && break; sleep 0.5; done
 
 echo ">> load app"
 > /tmp/monkeydo.log
@@ -78,7 +78,7 @@ echo ">> wait for render (differs from blank, then settles)"
 prev="$TMP/base.png"; ready=0
 for t in $(seq 1 30); do
   sleep 1
-  ./screenshot.sh "$TMP/cur.png" >/dev/null 2>&1 || continue
+  "$(dirname "$0")/screenshot.sh" "$TMP/cur.png" >/dev/null 2>&1 || continue
   db=$(pct "$TMP/cur.png" "$TMP/base.png")   # vs blank baseline -> "appeared"
   dp=$(pct "$TMP/cur.png" "$prev")           # vs previous frame  -> "settled"
   if awk -v db="${db:-$N}" -v dp="${dp:-$N}" -v n="$N" \
@@ -89,4 +89,4 @@ for t in $(seq 1 30); do
 done
 [ "$ready" = 1 ] || echo "   WARN: render not confirmed within 30s; capturing anyway"
 
-./screenshot.sh --crop ${SHOT_ARGS[@]+"${SHOT_ARGS[@]}"} "$OUT"
+"$(dirname "$0")/screenshot.sh" --crop ${SHOT_ARGS[@]+"${SHOT_ARGS[@]}"} "$OUT"

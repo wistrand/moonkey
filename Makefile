@@ -66,17 +66,17 @@ sim-restart: ## Restart the simulator (needed to switch DEVICE)
 	@setsid env GDK_BACKEND=x11 $(SIM) >/tmp/ciqsim.log 2>&1 < /dev/null & echo "simulator restarted"
 
 run: ## Build DEVICE + load into the sim. Override settings via env vars named after properties.xml ids, e.g. `moonImage=1 make run`, `tz=2 moonImage=2 make run`.
-	@./simrun.sh $(DEVICE)
+	@./scripts/simrun.sh $(DEVICE)
 
 shot: ## Build DEVICE, (re)launch sim, wait for the face to render, screenshot -> bin/shot-<device>.png
 	@mkdir -p $(BIN)
-	./auto-shot.sh $(DEVICE) $(BIN)/shot-$(DEVICE).png
+	./scripts/auto-shot.sh $(DEVICE) $(BIN)/shot-$(DEVICE).png
 
 install: ## Build + sideload the DEV variant ("Moonkey Dev"; coexists with store/beta). Override settings via env, e.g. `moonImage=1 make install DEVICE=fenix843mm`.
-	@./simrun.sh --install $(DEVICE)
+	@./scripts/simrun.sh --install $(DEVICE)
 
-uninstall: ## Remove sideloaded Moonkey from a connected watch (./uninstall.sh DEVICE to narrow)
-	./uninstall.sh
+uninstall: ## Remove sideloaded Moonkey from a connected watch (./scripts/uninstall.sh DEVICE to narrow)
+	./scripts/uninstall.sh
 
 package: ## Build the PRODUCTION .iq (manifest.xml, public store id) -> bin/moonkey.iq
 	@mkdir -p $(BIN)
@@ -151,17 +151,17 @@ launcher-icons: $(CRESCENT_BOLD) ## Regenerate per-device launcher icons (60/65/
 	done
 
 settings-doc: ## Regenerate agent_docs/settings.md from resources/settings/*.xml
-	@./gen-settings-doc.py
+	@./scripts/gen-settings-doc.py
 
 gallery: ## Regenerate the docs/ landing-page screenshots (fenix843mm, transparent) -> docs/cfg-*.png
 	@# Each is a representative settings combo (see docs/index.html). auto-shot honours
 	@# env-var overrides named after properties.xml ids. The default shot passes a no-op
 	@# moonImage=0 so auto-shot clears the sim's stored .SET (otherwise it reuses the
 	@# previous run's settings and the "default" comes out as whatever ran last).
-	moonImage=0 ./auto-shot.sh -t marq2aviator docs/cfg-default.png
-	nsMarkers=true skipLabels=true compN=102 compS=100 compW=104 compE=103 moonImage=1 compNW=-2 compNE=-2 compSE=-2 tz=-2 accentColor=16755200 secTickColor=0x777777 radialGradient=false smallValuesN=true smallValuesS=true smallValuesE=true smallValuesW=true metalHands=true ./auto-shot.sh -t fenix843mm docs/cfg-loaded.png
-	moonImage=2 nsMarkers=true accentColor=0x00DDFF metalHands=true smallValuesN=true smallValuesS=true smallValuesE=true smallValuesW=true radialGradient=false secTickColor=-2 ./auto-shot.sh -t fenix843mm docs/cfg-fox.png
-	moonImage=3 nsMarkers=true accentColor=0xFFFFFF secTickColor=0xFFFFFF radialGradient=false compNE=-2 compSE=-2 compNW=-2 tz=-2 compN=-2 compS=-2 ./auto-shot.sh -t fenix843mm docs/cfg-minimal.png
+	moonImage=0 ./scripts/auto-shot.sh -t marq2aviator docs/cfg-default.png
+	nsMarkers=true skipLabels=true compN=102 compS=100 compW=104 compE=103 moonImage=1 compNW=-2 compNE=-2 compSE=-2 tz=-2 accentColor=16755200 secTickColor=0x777777 radialGradient=false smallValuesN=true smallValuesS=true smallValuesE=true smallValuesW=true metalHands=true ./scripts/auto-shot.sh -t fenix843mm docs/cfg-loaded.png
+	moonImage=2 nsMarkers=true accentColor=0x00DDFF metalHands=true smallValuesN=true smallValuesS=true smallValuesE=true smallValuesW=true radialGradient=false secTickColor=-2 ./scripts/auto-shot.sh -t fenix843mm docs/cfg-fox.png
+	moonImage=3 nsMarkers=true accentColor=0xFFFFFF secTickColor=0xFFFFFF radialGradient=false compNE=-2 compSE=-2 compNW=-2 tz=-2 compN=-2 compS=-2 ./scripts/auto-shot.sh -t fenix843mm docs/cfg-minimal.png
 	@$(MAKE) --no-print-directory gallery-sm
 
 gallery-sm: ## Re-derive the small docs/cfg-*-sm.png (480px, 256-colour, <150KB) from the full cfg-*.png (no sim)

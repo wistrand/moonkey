@@ -46,7 +46,7 @@ AMOLED, `minApiLevel 4.2.1`: `marq2aviator` (default), `fenix843mm`, `fenix847mm
 ## Build & run
 
 The SDK is managed by `connect-iq-sdk-manager-cli` (an open-source CLI replacement for the GUI SDK
-Manager). With the toolchain set up (`setup-connectiq.sh`):
+Manager). With the toolchain set up (`scripts/setup-connectiq.sh`):
 
 ```bash
 make run                      # build + load the default device into the simulator

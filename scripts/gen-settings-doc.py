@@ -11,7 +11,7 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 STRINGS = ROOT / "resources/strings/strings.xml"
 PROPS = ROOT / "resources/settings/properties.xml"
 SETTINGS = ROOT / "resources/settings/settings.xml"
@@ -34,7 +34,7 @@ def deref(ref):
 lines = [
     "# Moonkey — settings reference",
     "",
-    "_Generated from `resources/settings/` by `gen-settings-doc.py` (`make settings-doc`) — do not edit by hand._",
+    "_Generated from `resources/settings/` by `scripts/gen-settings-doc.py` (`make settings-doc`) — do not edit by hand._",
     "",
     "Values shown are what the property stores, i.e. what an env-var override (`make run` / "
     "`make shot` / `make install`) accepts, e.g. `metalHands=true`, `compE=103`, `accentColor=0xFF3030`.",

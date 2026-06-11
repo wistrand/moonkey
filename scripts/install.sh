@@ -21,7 +21,7 @@
 set -euo pipefail
 
 DEVICE="${1:-marq2aviator}"
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PRG="${2:-$PROJECT_DIR/bin/moonkey-$DEVICE.prg}"
 KEY="${CONNECTIQ_KEY:-$HOME/.connectiq/developer_key.der}"
 CLI="$HOME/go/bin/connect-iq-sdk-manager-cli"

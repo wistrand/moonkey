@@ -1,6 +1,6 @@
 # Moonkey — settings reference
 
-_Generated from `resources/settings/` by `gen-settings-doc.py` (`make settings-doc`) — do not edit by hand._
+_Generated from `resources/settings/` by `scripts/gen-settings-doc.py` (`make settings-doc`) — do not edit by hand._
 
 Values shown are what the property stores, i.e. what an env-var override (`make run` / `make shot` / `make install`) accepts, e.g. `metalHands=true`, `compE=103`, `accentColor=0xFF3030`.
 
