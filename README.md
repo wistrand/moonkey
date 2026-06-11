@@ -6,7 +6,7 @@ and tilted to match the sky — inside a 24-hour day/night ring, with amber hand
 data fields.
 
 <p align="center">
-  <img src="data/snap.png" alt="Moonkey watch face" width="340">
+  <img src="docs/snap.png" alt="Moonkey watch face" width="340">
 </p>
 
 ## Features

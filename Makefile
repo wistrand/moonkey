@@ -38,7 +38,7 @@ HERO       := data/store-hero.png
 # per-device launcher icons, where the store crescent's thin sliver/ring turns muddy.
 CRESCENT_BOLD := $(BIN)/moon-crescent-bold.png
 
-.PHONY: all build run sim sim-restart shot install uninstall package package-beta clean moon settings-doc gallery store-icon on-device-icon hero store-assets launcher-icons help
+.PHONY: all build run sim sim-restart shot install uninstall package package-beta clean moon settings-doc gallery gallery-sm store-icon on-device-icon hero store-assets launcher-icons help
 .DEFAULT_GOAL := help
 
 help: ## Show this help
@@ -159,6 +159,13 @@ gallery: ## Regenerate the docs/ landing-page screenshots (fenix843mm, transpare
 	nsMarkers=true skipLabels=true compN=102 compS=100 compW=104 compE=103 moonImage=1 compNW=-2 compNE=-2 compSE=-2 tz=-2 accentColor=16755200 secTickColor=0x777777 radialGradient=false smallValuesN=true smallValuesS=true smallValuesE=true smallValuesW=true metalHands=true ./auto-shot.sh -t fenix843mm docs/cfg-loaded.png
 	moonImage=2 nsMarkers=true accentColor=0x00DDFF metalHands=true smallValuesN=true smallValuesS=true smallValuesE=true smallValuesW=true radialGradient=false secTickColor=-2 ./auto-shot.sh -t fenix843mm docs/cfg-fox.png
 	moonImage=3 nsMarkers=true accentColor=0xFFFFFF secTickColor=0xFFFFFF radialGradient=false compNE=-2 compSE=-2 compNW=-2 tz=-2 compN=-2 compS=-2 ./auto-shot.sh -t fenix843mm docs/cfg-minimal.png
+	@$(MAKE) --no-print-directory gallery-sm
+
+gallery-sm: ## Re-derive the small docs/cfg-*-sm.png (480px, 256-colour, <150KB) from the full cfg-*.png (no sim)
+	@for f in default loaded fox minimal; do \
+	  magick docs/cfg-$$f.png -resize 480x -strip -colors 256 -define png:compression-level=9 docs/cfg-$$f-sm.png; \
+	  echo "wrote docs/cfg-$$f-sm.png ($$(stat -c%s docs/cfg-$$f-sm.png) bytes)"; \
+	done
 
 clean: ## Remove build artifacts
 	rm -f $(BIN)/*.prg $(BIN)/*.iq $(BIN)/*.log $(BIN)/*.debug.xml
