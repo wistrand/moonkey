@@ -16,7 +16,7 @@ JUNGLE   := moonkey.jungle
 DEV_JUNGLE := moonkey-dev.jungle
 BETA_JUNGLE := moonkey-beta.jungle
 BIN      := bin
-SRC      := $(wildcard src/*.mc) manifest.xml $(JUNGLE) $(wildcard resources/*/*)
+SRC      := $(wildcard src/*.mc) manifest.xml $(JUNGLE) $(wildcard resources/*/*) $(wildcard resources-launcher/*/*/*)
 PRGS     := $(addprefix $(BIN)/moonkey-,$(addsuffix .prg,$(DEVICES)))
 
 # Moon bitmap: cropped from the lunar disc in data/moon-raw.jpg, circular-masked, 100px.
@@ -24,7 +24,21 @@ MOON_RAW  := data/moon-raw.jpg
 MOON_PNG  := resources/drawables/moon.png
 MOON_CROP := 1600x1600+739+1243
 
-.PHONY: all build run sim sim-restart shot install uninstall package package-beta clean moon settings-doc gallery help
+# Connect IQ Store assets (per Garmin brand guidelines): all built from a shared
+# left-lit shaded-crescent intermediate ($(CRESCENT)) of the real Moon photo + a thin
+# amber ring on a night-navy gradient. Uploaded separately in the dev portal (these are
+# NOT the in-watch launcher icon). store icon 500x500; on-device icon 128x128 (full +
+# 64-colour MIP variant); hero 1440x720.
+CRESCENT   := $(BIN)/moon-crescent.png
+STORE_ICON := data/store-icon.png
+ICON_FULL  := data/icon-128.png
+ICON_LC    := data/icon-128-lc.png
+HERO       := data/store-hero.png
+# Bolder crescent (fatter lit fraction, deeper shadow, tighter terminator) for the tiny
+# per-device launcher icons, where the store crescent's thin sliver/ring turns muddy.
+CRESCENT_BOLD := $(BIN)/moon-crescent-bold.png
+
+.PHONY: all build run sim sim-restart shot install uninstall package package-beta clean moon settings-doc gallery store-icon on-device-icon hero store-assets launcher-icons help
 .DEFAULT_GOAL := help
 
 help: ## Show this help
@@ -77,6 +91,61 @@ moon: ## Regenerate resources/drawables/moon.png from moon-raw.jpg
 	  -compose Multiply -composite \
 	  -colorspace sRGB -strip $(MOON_PNG)
 	@echo "wrote $(MOON_PNG) ($$(stat -c%s $(MOON_PNG)) bytes)"
+
+# Shared intermediate: the left-lit shaded crescent (transparent disc), reused by all
+# three store assets. Dark disc offset right + blurred = soft terminator; circular alpha
+# mask; slight tilt. Rebuilt only when moon-raw changes.
+$(CRESCENT): $(MOON_RAW)
+	@mkdir -p $(BIN)
+	magick $(MOON_RAW) -crop $(MOON_CROP) +repage -resize 380x380 \
+	  \( -size 380x380 xc:white -fill gray14 -draw "circle 260,190 450,190" -blur 0x10 \) \
+	  -compose Multiply -composite \
+	  \( -size 380x380 xc:black -fill white -draw "circle 190,190 380,190" \) \
+	  -alpha off -compose CopyOpacity -composite \
+	  -background none -virtual-pixel none -distort SRT -12 $@
+
+store-icon: $(CRESCENT) ## Regenerate data/store-icon.png (500x500 CIQ Store listing icon)
+	magick -size 500x500 radial-gradient:#1b2c48-#0a1322 \
+	  $(CRESCENT) -gravity center -compose over -composite \
+	  -fill none -stroke "#FFAA00" -strokewidth 4 -draw "circle 250,250 250,52" \
+	  -strip -colorspace sRGB $(STORE_ICON)
+	@echo "wrote $(STORE_ICON) ($$(stat -c%s $(STORE_ICON)) bytes)"
+
+on-device-icon: $(CRESCENT) ## Regenerate the 128x128 on-device icons (full-colour + 64-colour MIP)
+	magick -size 128x128 radial-gradient:#1b2c48-#0a1322 \
+	  \( $(CRESCENT) -resize 98x98 \) -gravity center -compose over -composite \
+	  -fill none -stroke "#FFAA00" -strokewidth 1 -draw "circle 64,64 64,13" \
+	  -strip -colorspace sRGB $(ICON_FULL)
+	magick $(ICON_FULL) -dither None -colors 64 -strip PNG8:$(ICON_LC)
+	@echo "wrote $(ICON_FULL) + $(ICON_LC) ($$(magick identify -format '%k' $(ICON_LC)) colours)"
+
+hero: $(CRESCENT) ## Regenerate data/store-hero.png (1440x720 listing hero)
+	magick -size 1440x720 radial-gradient:#1b2c48-#0a1322 \
+	  \( $(CRESCENT) -resize 480x480 \) -gravity center -compose over -composite \
+	  -fill none -stroke "#FFAA00" -strokewidth 5 -draw "circle 720,360 720,108" \
+	  -strip -colorspace sRGB $(HERO)
+	@echo "wrote $(HERO) ($$(stat -c%s $(HERO)) bytes)"
+
+store-assets: store-icon on-device-icon hero ## Regenerate all store-listing assets (icon + on-device + hero)
+
+$(CRESCENT_BOLD): $(MOON_RAW)
+	@mkdir -p $(BIN)
+	magick $(MOON_RAW) -crop $(MOON_CROP) +repage -resize 380x380 \
+	  \( -size 380x380 xc:white -fill gray10 -draw "circle 310,190 500,190" -blur 0x8 \) \
+	  -compose Multiply -composite \
+	  \( -size 380x380 xc:black -fill white -draw "circle 190,190 380,190" \) \
+	  -alpha off -compose CopyOpacity -composite \
+	  -background none -virtual-pixel none -distort SRT -12 $@
+
+launcher-icons: $(CRESCENT_BOLD) ## Regenerate per-device launcher icons (60/65/70 px) in resources-launcher/
+	@for sz in 60 65 70; do \
+	  d=resources-launcher/$$sz/drawables; mkdir -p $$d; \
+	  magick -size 256x256 radial-gradient:#1b2c48-#0a1322 \
+	    \( $(CRESCENT_BOLD) -resize 212x212 \) -gravity center -compose over -composite \
+	    -fill none -stroke "#FFAA00" -strokewidth 8 -draw "circle 128,128 128,15" \
+	    -resize $${sz}x$${sz} -alpha remove -strip -colorspace sRGB $$d/launcher_icon.png; \
+	  echo "wrote $$d/launcher_icon.png"; \
+	done
 
 settings-doc: ## Regenerate agent_docs/settings.md from resources/settings/*.xml
 	@./gen-settings-doc.py

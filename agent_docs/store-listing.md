@@ -11,29 +11,23 @@ via the normal Submit-an-App flow, and freeze the prod id forever. See
 [CLAUDE.md](../CLAUDE.md).
 
 ## Short summary (one-liner field)
-A photographic Moon at the center of an analog face — phase-shaded and tilted to match your sky.
+The real Moon at the center of an analog face — shaded for tonight's phase and tilted to match your sky.
 
 ## Full description
-Moonkey is an analog watch face for AMOLED Garmin watches, built around a real photograph of the Moon.
+Moonkey is an analog watch face for AMOLED Garmin watches built around a real image of the Moon. It's shaded for tonight's exact phase and rotated to the inclination the Moon actually shows in your sky — the terminator tilts for your latitude and the time of night, not a generic icon. A thin ring around the disc traces its time above the horizon, moonrise to moonset.
 
-The Moon is shaded for tonight's exact phase and rotated to the true inclination it shows in your sky — the terminator tilts the way the real Moon does for your latitude and the time of night, not as a generic icon. A thin ring hugging the disc traces the Moon's time above the horizon, from moonrise to moonset.
+A 24-hour day/night ring surrounds it (midnight up, noon down): an amber arc for daylight from your local sunrise to sunset, a current-time pointer, a sun ring that brightens toward midday, and optional markers pointing out south and north. The hands read by shape, not length — an hour baton ending in an open ring, a tapered minute lance, and a white second hand tipped in amber.
 
-Around it, a 24-hour day/night ring puts midnight at the top and noon at the bottom, with an amber arc spanning daylight from your local sunrise to sunset and a pointer at the current time. A soft gradient sun ring brightens toward midday, and optional markers point out south and north — the direction the sun crosses the meridian, worked out for your hemisphere.
+Data fields you choose ring the dial — heart rate, steps, calories, body battery, intensity, floors, altitude and more — plus weather (icon, temperature, precipitation-chance bar, wind barb), date, time, and a second-timezone clock.
 
-The hands are told apart by silhouette, not just length: the hour is a tapered baton ending in an open ring, the minute a tapered lance, and the second a white shaft tipped in amber.
+Make it yours from Garmin Connect:
+- Accent and data colours, and the moon-arc colour (or hidden)
+- Central image: moon, cat, fox, polar bear or seal (all phase-shaded)
+- Brushed-metal hands, a second-tick track, south/north markers, the radial gradient, and per-field small fonts
+- A world timezone with automatic daylight saving
+- Seven fields — pick a complication, hide it, or choose a mode: Persian Solar date + Tehran clock, weather, date + weekday, steps + heart rate, or custom text
 
-The dial carries data fields you choose — heart rate, steps, calories, body battery, intensity minutes, floors, altitude, and more — alongside weather (a clear / cloud / rain / snow / storm / fog glyph, temperature, a precipitation-chance bar, and a meteorological wind barb), the date, the time, and a second-timezone world clock.
-
-Make it yours, all from Garmin Connect:
-- Accent and data colours, and the moon-arc colour (or hide the arc)
-- The central image — moon, cat, fox, polar bear or seal (each still shows the phase)
-- A brushed-metal finish for the hands, a ring of second tick marks (any colour, or off), south/north markers on the day-night ring, the radial gradient, and per-field small fonts
-- A world timezone for the corner clock, with automatic daylight saving
-- Seven configurable fields — pick a complication for each, hide any, or choose a special mode: a Persian Solar date with the Tehran clock, a weather readout, the date with weekday, steps and heart rate, or your own custom text
-
-All of the astronomy is computed on the watch, no internet required, and tracks published almanacs to within a few minutes. The face is always-on aware: it keeps its colors but dims the battery-hungry detail to protect the display.
-
-Location access is used only for sun and Moon calculations — your position stays on the watch and is never transmitted.
+Everything is computed on the watch — no internet — and tracks published almanacs to within a few minutes. Always-on aware: colours stay, battery-hungry detail dims. Location is used only for sun and Moon math and never leaves the watch.
 
 ## Submission metadata
 - **Category:** Watch Face
@@ -43,11 +37,17 @@ Location access is used only for sun and Moon calculations — your position sta
 - **Permissions to justify in review:** Positioning (sun/Moon location, on-device only), ComplicationSubscriber (configurable fields)
 - **Privacy / GDPR:** no personal data collected or transmitted — location is used on-device only; state this in the listing. No privacy policy required while nothing leaves the watch.
 
-## Asset checklist (TODO before submit)
-- [ ] Store icon (separate from the 65x65 launcher icon — supply a proper store image)
-- [ ] Screenshots — `data/snap.png` exists; add a couple more, ideally different device shapes (round 416x416, plus a venu3)
-- [ ] Optional polish: per-device launcher icons (60/65/70 px via per-device `resourcePath`) to clear the build's scaling warning
-- [ ] `make package` -> `bin/moonkey.iq` (8 products / 11 hardware variants) and confirm it runs on the device variants not physically tested
+## Assets to upload
+Icons/hero are generated by `make store-assets`, screenshots by `make gallery` (all from the Moon photo / sim — no hand editing):
+
+- **Store icon** — 500×500 — [`data/store-icon.png`](../data/store-icon.png) · `make store-icon`
+- **On-device icon** — 128×128, full-colour + 64-colour MIP variant — [`data/icon-128.png`](../data/icon-128.png), [`data/icon-128-lc.png`](../data/icon-128-lc.png) · `make on-device-icon`
+- **Hero** — 1440×720 — [`data/store-hero.png`](../data/store-hero.png) · `make hero`
+- **Screenshots** — [`docs/cfg-default.png`](../docs/cfg-default.png) (marq2aviator), [`docs/cfg-loaded.png`](../docs/cfg-loaded.png), [`docs/cfg-fox.png`](../docs/cfg-fox.png), [`docs/cfg-minimal.png`](../docs/cfg-minimal.png) (fenix 8), and [`data/snap.png`](../data/snap.png) · `make gallery`. The `cfg-*` shots are transparent full-device renders; flatten onto a background (or crop to the dial) if the portal needs opaque. A round venu3 shot would round out the set.
+
+Still to do before submit:
+- [ ] `make package` → `bin/moonkey.iq` (8 products / 11 hardware variants); confirm it runs on the variants not physically tested
+- [x] Per-device launcher icons (60/65/70 px) — done via `resources-launcher/` + `make launcher-icons` (clears the scale warning)
 
 ## Tone alternatives (if wanted)
 Current tone is utilitarian/precise. A more playful opener could lead with the Moon

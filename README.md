@@ -1,7 +1,7 @@
 # Moonkey
 
 An analog [Connect IQ](https://developer.garmin.com/connect-iq/) watch face for AMOLED Garmin
-watches (MARQ 2, fenix 8), written in Monkey C. A photographic Moon at the centre — phase-shaded
+watches (MARQ 2, fenix 8), written in Monkey C. A real Moon at the centre — phase-shaded
 and tilted to match the sky — inside a 24-hour day/night ring, with amber hands and a ring of
 data fields.
 
