@@ -37,13 +37,20 @@ class AnalogView extends WatchUi.WatchFace {
     // so it has its own off flag rather than living in _compOff.
     private var _swOff as Boolean = false;
     private const TZ_OFFSET = [0.0, 0.0, 1.0, 3.5, 4.0, 5.5, 9.0, 10.0, -5.0, -8.0,
-        -6.0, -3.0, 3.0, 8.0, 7.0, 12.0, -10.0]; // standard-time hours
+        -6.0, -3.0, 3.0, 8.0, 7.0, 12.0, -10.0,
+        -11.0, -9.0, -7.0, -4.0, -1.0, 2.0, 5.0, 6.0, 9.5, 11.0,
+        1.0, -5.0, -6.0, -7.0, -8.0]; // standard-time hours (last 5 are generic region labels)
     private const TZ_LABEL = ["UTC", "LON", "STO", "TEH", "DXB", "IND", "TYO", "SYD", "NYC", "LAX",
-        "CHI", "SAO", "MOW", "SHA", "BKK", "AKL", "HNL"];
+        "CHI", "SAO", "MOW", "SHA", "BKK", "AKL", "HNL",
+        "PPG", "ANC", "DEN", "HFX", "AZO", "ATH", "KHI", "DAC", "ADL", "NOU",
+        "CET", "EST", "CST", "MST", "PST"];
     // DST rule per zone: 0 none, 1 EU, 2 US, 3 AU, 4 NZ. (Tehran/Brazil/Moscow/
-    // China have no DST; Tehran abolished it in 2022, Brazil in 2019.)
+    // China have no DST; Tehran abolished it in 2022, Brazil in 2019.) US also covers
+    // Canada (Anchorage/Denver/Halifax); EU covers Azores/Athens; AU covers Adelaide.
     private const TZ_DST = [0, 1, 1, 0, 0, 0, 0, 3, 2, 2,
-        2, 0, 0, 0, 0, 4, 0];
+        2, 0, 0, 0, 0, 4, 0,
+        0, 2, 2, 2, 1, 1, 0, 0, 3, 0,
+        1, 2, 2, 2, 2];
 
     // Configurable complication slots, set via the `compSE..compE` app-settings
     // (compTypeFromCode). _compVal caches each raw value string (refreshed by the

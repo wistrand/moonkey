@@ -23,6 +23,21 @@
     <string id="tzBangkok">Bangkok</string>
     <string id="tzAuckland">Auckland</string>
     <string id="tzHonolulu">Honolulu</string>
+    <string id="tzPagoPago">Pago Pago</string>
+    <string id="tzAnchorage">Anchorage</string>
+    <string id="tzDenver">Denver</string>
+    <string id="tzHalifax">Halifax</string>
+    <string id="tzAzores">Azores</string>
+    <string id="tzAthens">Athens</string>
+    <string id="tzKarachi">Karachi</string>
+    <string id="tzDhaka">Dhaka</string>
+    <string id="tzAdelaide">Adelaide</string>
+    <string id="tzNoumea">Noumea</string>
+    <string id="tzCET">Central European</string>
+    <string id="tzUSEast">US Eastern</string>
+    <string id="tzUSCentral">US Central</string>
+    <string id="tzUSMountain">US Mountain</string>
+    <string id="tzUSPacific">US Pacific</string>
 
     <!-- Connect IQ app-settings (Garmin Connect) labels. -->
     <string id="setAccent">Accent Color</string>

@@ -65,7 +65,7 @@ All config is **Connect IQ app settings** (`resources/settings/{settings,propert
 - **Moon-arc colour** (`moonArcColor`) — the above-horizon ring; a **Transparent** option (`-2`) hides it.
 - **Moon image** (`moonImage`) — moon / cat / fox / polar bear / seal (the bake's shading + rotation still apply).
 - **Custom text** (`text`) — a free-text string shown by the N field's "Show Text" mode.
-- **Timezone** for the SW world clock (`tz`) — a curated zone picker (17 zones). `TZ_OFFSET`/`TZ_LABEL`/`TZ_DST` are indexed by the `tz` value. DST is computed per rule group (`dstHours`: EU/US/AU/NZ; no tz database, so fixed offset + rule), judged at ~02:00 local on the zone's standard-time date. **`tz == -2` hides the SW clock.**
+- **Timezone** for the SW world clock (`tz`) — a curated zone picker (32 zones). `TZ_OFFSET`/`TZ_LABEL`/`TZ_DST` are indexed by the `tz` value. DST is computed per rule group (`dstHours`: EU/US/AU/NZ; no tz database, so fixed offset + rule), judged at ~02:00 local on the zone's standard-time date. **`tz == -2` hides the SW clock.**
 - **Second-tick track** (`secTickColor`) — 48 short minor ticks + 12 longer U-marks at the 5-min positions, near the edge; the code default (the `-1` option) is dark grey, but the **shipped default is None (`-2`) = off**. Static, so baked into the radial cache (AOD-dropped).
 - **N/S markers** (`nsMarkers`, default on) — compass triangles on the day/night ring's gradient edge at solar transit; filled south / outline north, hemisphere-aware, AOD-dropped (see Subsystems).
 - **Radial gradient** (`radialGradient`, default on) — toggles the four diagonal gradient arcs off; the flag is in the radial-cache key.

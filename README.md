@@ -26,7 +26,7 @@ data fields.
 - **Configurable** (Garmin Connect app settings): accent & data colours, **moon-arc colour**, the
   **moon image** (moon, cat, fox, polar bear or seal), optional **metal-look hands**, a **second-tick
   track** (colour, or off, default off), **N/S markers**, a **radial-gradient** toggle, **per-field small fonts**, a world **timezone**
-  (17 zones, automatic DST), and **seven complication slots** (five data fields + weather + clock):
+  (32 zones, automatic DST), and **seven complication slots** (five data fields + weather + clock):
   pick a complication per slot, **hide any**, or choose a special mode: **Persian Solar date + Tehran
   clock** (E or S), **weather** icon+temp (N/S), **date + weekday** (E), **steps + heart rate** (W), or
   **custom text** (N). All from Garmin Connect, on every device.

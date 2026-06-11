@@ -150,6 +150,21 @@ Default: **Default**
 | Bangkok | `14` |
 | Auckland | `15` |
 | Honolulu | `16` |
+| Pago Pago | `17` |
+| Anchorage | `18` |
+| Denver | `19` |
+| Halifax | `20` |
+| Azores | `21` |
+| Athens | `22` |
+| Karachi | `23` |
+| Dhaka | `24` |
+| Adelaide | `25` |
+| Noumea | `26` |
+| Central European | `27` |
+| US Eastern | `28` |
+| US Central | `29` |
+| US Mountain | `30` |
+| US Pacific | `31` |
 
 ## SE field (height)
 `compSE` — Lower-right field: pick a complication, or hide it.

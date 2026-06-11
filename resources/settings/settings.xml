@@ -113,6 +113,21 @@
             <listEntry value="14">@Strings.tzBangkok</listEntry>
             <listEntry value="15">@Strings.tzAuckland</listEntry>
             <listEntry value="16">@Strings.tzHonolulu</listEntry>
+            <listEntry value="17">@Strings.tzPagoPago</listEntry>
+            <listEntry value="18">@Strings.tzAnchorage</listEntry>
+            <listEntry value="19">@Strings.tzDenver</listEntry>
+            <listEntry value="20">@Strings.tzHalifax</listEntry>
+            <listEntry value="21">@Strings.tzAzores</listEntry>
+            <listEntry value="22">@Strings.tzAthens</listEntry>
+            <listEntry value="23">@Strings.tzKarachi</listEntry>
+            <listEntry value="24">@Strings.tzDhaka</listEntry>
+            <listEntry value="25">@Strings.tzAdelaide</listEntry>
+            <listEntry value="26">@Strings.tzNoumea</listEntry>
+            <listEntry value="27">@Strings.tzCET</listEntry>
+            <listEntry value="28">@Strings.tzUSEast</listEntry>
+            <listEntry value="29">@Strings.tzUSCentral</listEntry>
+            <listEntry value="30">@Strings.tzUSMountain</listEntry>
+            <listEntry value="31">@Strings.tzUSPacific</listEntry>
         </settingConfig>
     </setting>
 
