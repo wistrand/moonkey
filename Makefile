@@ -30,10 +30,10 @@ MOON_CROP := 1600x1600+739+1243
 # NOT the in-watch launcher icon). store icon 500x500; on-device icon 128x128 (full +
 # 64-colour MIP variant); hero 1440x720.
 CRESCENT   := $(BIN)/moon-crescent.png
-STORE_ICON := data/store-icon.png
-ICON_FULL  := data/icon-128.png
-ICON_LC    := data/icon-128-lc.png
-HERO       := data/store-hero.png
+STORE_ICON := docs/store-icon.png
+ICON_FULL  := docs/icon-128.png
+ICON_LC    := docs/icon-128-lc.png
+HERO       := docs/store-hero.png
 # Bolder crescent (fatter lit fraction, deeper shadow, tighter terminator) for the tiny
 # per-device launcher icons, where the store crescent's thin sliver/ring turns muddy.
 CRESCENT_BOLD := $(BIN)/moon-crescent-bold.png
