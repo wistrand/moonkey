@@ -122,7 +122,7 @@ Toggle — default **Off**.
 ## N/S Markers
 `nsMarkers` — Mark south and north on the day/night ring at the sun's meridian crossing (the daylight-arc midpoint).
 
-Toggle — default **Off**.
+Toggle — default **On**.
 
 ## Timezone (SW field)
 `tz` — Second timezone for the SW corner clock, with automatic DST. None hides it.

@@ -20,7 +20,7 @@
     <property id="smallValuesE" type="boolean">false</property>
     <property id="smallValuesW" type="boolean">false</property>
     <property id="metalHands" type="boolean">false</property>
-    <property id="nsMarkers" type="boolean">false</property>
+    <property id="nsMarkers" type="boolean">true</property>
     <property id="tz" type="number">-1</property>
     <property id="compSE" type="number">-1</property>
     <property id="compNE" type="number">-1</property>

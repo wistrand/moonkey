@@ -120,10 +120,10 @@ class AnalogView extends WatchUi.WatchFace {
     // cylindrical gradient via nested polys (dark edges -> bright centre). Solid when off
     // or asleep.
     private var _metalHands as Boolean = false;
-    // "N/S markers" (nsMarkers setting, default off): small compass triangles on the
+    // "N/S markers" (nsMarkers setting, default on): small compass triangles on the
     // day/night ring at the sun's meridian crossing (daylight-arc midpoint) and its
     // opposite -- filled = south, outline = north (hemisphere-flipped). AOD-dropped.
-    private var _nsMarkers as Boolean = false;
+    private var _nsMarkers as Boolean = true;
     private const RING_R_FRAC = 0.27;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
     // Font sizing reference = MARQ 2 (the device the layout was tuned on): dial radius
     // 195 px (390/2), getFontHeight(FONT_XTINY)=29, FONT_TINY=39. All text is sized
@@ -680,7 +680,7 @@ class AnalogView extends WatchUi.WatchFace {
         _smallValuesE = false;
         _smallValuesW = false;
         _metalHands = false;
-        _nsMarkers = false;
+        _nsMarkers = true;
         setCompDefaults();
         if (Toybox.Application has :Properties) {
             try {
