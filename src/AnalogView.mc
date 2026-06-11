@@ -1167,12 +1167,14 @@ class AnalogView extends WatchUi.WatchFace {
     }
 
     //! Observer location for astronomy: GPS fix first, then the weather observation
-    //! point, then a fixed default. An out-of-range latitude (the simulator's
-    //! uninitialised GPS reports lat/lon = 180) is treated the same as a missing fix at
-    //! each step -- so a garbage GPS falls back to the *weather* location (matching
-    //! sunLocation / the sun ring) rather than jumping straight to the default. The
-    //! default (Gothenburg) is a last resort (no GPS *and* no weather) so the moon still
-    //! renders in the sim; it's dead code on a watch (real GPS is always within +/-90).
+    //! point. A garbage GPS falls back to the *weather* location (matching sunLocation /
+    //! the sun ring) rather than jumping straight to a default. Two unusable outcomes
+    //! are distinguished: an **out-of-range** latitude only ever comes from the
+    //! simulator's uninitialised GPS (lat/lon = 180), so that case substitutes a fixed
+    //! default (Gothenburg) to keep the moon rendering in the sim; a genuinely **null**
+    //! location (real watch, no GPS *and* no weather) returns null, so the bake draws
+    //! the neutral upright phase instead of a fake inclination. (On a watch GPS is always
+    //! within +/-90, so the Gothenburg branch is sim-only.)
     private function observerLoc() as Position.Location or Null {
         var loc = null;
         if (Toybox has :Position) {
@@ -1184,14 +1186,19 @@ class AnalogView extends WatchUi.WatchFace {
         if (locUnusable(loc)) {
             loc = sunLocation();  // weather observation point (then its own GPS fallback)
         }
-        if (locUnusable(loc)) {
-            loc = new Position.Location({
+        if (!locUnusable(loc)) {
+            return loc;           // a real fix (GPS or weather)
+        }
+        // Unusable: out-of-range (loc != null) = the sim's 180 GPS -> fixed default;
+        // genuinely null = no location at all -> null (upright phase).
+        if (loc != null) {
+            return new Position.Location({
                 :latitude => 57.6114,
                 :longitude => 11.7858,
                 :format => :degrees
             });
         }
-        return loc;
+        return null;
     }
 
     //! True if a location is null or has an impossible latitude (|lat| > ~90.5 deg).
