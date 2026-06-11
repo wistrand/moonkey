@@ -4,7 +4,10 @@
 SHELL := /bin/bash
 
 DEVICE  ?= marq2aviator
-DEVICES := marq2aviator marq2 fenix843mm fenix847mm venu3 epix2pro47mm epix2 fr965
+DEVICES := marq2aviator marq2 fenix843mm fenix847mm venu3 epix2pro47mm epix2 fr965 fenix8pro47mm
+# fenix8pro47mm = fēnix 8 Pro 47/51mm + MicroLED + quatix 8 Pro (454x454, API 6.0). CIQ reports
+# it as AMOLED (microLED isn't a distinct display type), so no code changes; launcher icon is 65 px.
+# Requires the device downloaded: `$(CLI) device download -d fenix8pro47mm --include-fonts`.
 
 CLI      := $(HOME)/go/bin/connect-iq-sdk-manager-cli
 SDK_BIN  := $(shell $(CLI) sdk current-path --bin 2>/dev/null)

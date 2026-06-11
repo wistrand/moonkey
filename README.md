@@ -41,7 +41,7 @@ data fields.
 
 ## Targets
 
-AMOLED, `minApiLevel 4.2.1`: `marq2aviator` (default), `fenix843mm`, `fenix847mm`, `marq2`, `venu3`, `epix2pro47mm`, `epix2`, `fr965`.
+AMOLED, `minApiLevel 4.2.1`: `marq2aviator` (default), `fenix843mm`, `fenix847mm`, `marq2`, `venu3`, `epix2pro47mm`, `epix2`, `fr965`, `fenix8pro47mm` (fēnix 8 Pro / MicroLED).
 
 ## Build & run
 

@@ -14,3 +14,5 @@ epix2.resourcePath = $(epix2.resourcePath);resources-launcher/60
 fenix847mm.resourcePath = $(fenix847mm.resourcePath);resources-launcher/65
 fr965.resourcePath = $(fr965.resourcePath);resources-launcher/65
 venu3.resourcePath = $(venu3.resourcePath);resources-launcher/70
+# fēnix 8 Pro (fenix8pro47mm = 47/51mm + MicroLED + quatix 8 Pro; 454x454 AMOLED, 65 px launcher).
+fenix8pro47mm.resourcePath = $(fenix8pro47mm.resourcePath);resources-launcher/65

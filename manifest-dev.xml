@@ -13,6 +13,7 @@
             <iq:product id="epix2pro47mm"/>
             <iq:product id="epix2"/>
             <iq:product id="fr965"/>
+            <iq:product id="fenix8pro47mm"/>
         </iq:products>
         <iq:permissions>
             <iq:uses-permission id="Positioning"/>
