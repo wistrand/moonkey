@@ -100,10 +100,10 @@ class AnalogView extends WatchUi.WatchFace {
     // W field "Steps + HR" mode (compW sentinel 104): two lines, each value
     // prefixed by a small icon (footprints / heart).
     private var _wStepsHr as Boolean = false;
-    // Second-tick track (secTickColor setting; -2 = none/off, default dark grey on):
-    // 48 short minor ticks + 12 longer U-shaped 5-min marks, baked into the radial
-    // cache. Geometry precomputed once.
-    private var _secTickColor as Number = 0x777777;
+    // Second-tick track (secTickColor setting; -2 = none/off, -1 = default = dark grey on;
+    // the SHIPPED property default is -2/off). 48 short minor ticks + 12 longer U-shaped
+    // 5-min marks, baked into the radial cache. Geometry precomputed once.
+    private var _secTickColor as Number = 0x777777; // code default for the -1 option; applyProperties overrides
     private var _secTickHidden as Boolean = false;
     private var _secMinor as Lang.Array or Null = null; // 48 short tick lines [x1,y1,x2,y2]
     private var _secMajor as Lang.Array or Null = null; // 12 U marks [cx,cy,w,s,e,e1x,e1y,i1x,i1y,e2x,e2y,i2x,i2y]
@@ -125,6 +125,15 @@ class AnalogView extends WatchUi.WatchFace {
     // opposite -- filled = south, outline = north (hemisphere-flipped). AOD-dropped.
     private var _nsMarkers as Boolean = false;
     private const RING_R_FRAC = 0.27;      // day/night ring radius (and hand inner clip) as a fraction of dial radius
+    // Font sizing reference = MARQ 2 (the device the layout was tuned on): dial radius
+    // 195 px (390/2), getFontHeight(FONT_XTINY)=29, FONT_TINY=39. All text is sized
+    // proportionally to the live radius off these, so a device whose bitmap fonts are
+    // disproportionately large (e.g. fenix 8: scalable TTF, xtiny renders 34) matches
+    // MARQ 2's proportions instead. Rendered via vector fonts; bitmap fallback when a
+    // scalable face isn't available. See agent_docs (font research).
+    private const REF_RADIUS = 195.0;
+    private const REF_XTINY = 29.0;
+    private const REF_TINY = 39.0;
     private const MOON_TILT_OFFSET = 0.0; // 0 deg (was -90): align baked moon orientation with the sky
 
     private var _isSleeping as Boolean = false;
@@ -140,7 +149,9 @@ class AnalogView extends WatchUi.WatchFace {
     // symptom seen just after install). Default true so the first paint defers.
     private var _deferBake as Boolean = true;
     private var _vectorFont as Graphics.VectorFont or Null = null;
-    private var _labelFont as Graphics.VectorFont or Null = null; // tiny N/S field labels
+    private var _labelFont as Graphics.VectorFont or Null = null; // tiny N/S field labels (proportional, ~0.8x xtiny)
+    private var _valueFont as Graphics.VectorFont or Null = null; // proportional FONT_TINY role (cardinal/side values)
+    private var _xtinyFont as Graphics.VectorFont or Null = null; // proportional FONT_XTINY role
     private var _vectorFontTried as Boolean = false;
     private var _moon as WatchUi.BitmapResource or Null = null;
     private var _moonBuf as Graphics.BufferedBitmapReference or Null = null;
@@ -588,18 +599,23 @@ class AnalogView extends WatchUi.WatchFace {
         if (Graphics has :getVectorFont) {
             // Per-device face availability varies: MARQ2/fenix/FR965/epix ship
             // RobotoCondensed*; venu3 only has Roboto-Regular. List several so a
-            // match is found on each target (null → radial fields are skipped).
+            // match is found on each target (null → bitmap fallback).
             var faces = ["RobotoCondensedBold", "RobotoCondensedRegular", "RobotoCondensed",
                 "Swiss721Bold", "Swiss721Regular", "RobotoRegular"];
-            _vectorFont = Graphics.getVectorFont({
-                :face => faces,
-                :size => (dc.getFontHeight(Graphics.FONT_XTINY) * 1.15).toNumber()
-            });
-            // Much smaller scalable font for the N/S type labels.
-            _labelFont = Graphics.getVectorFont({
-                :face => faces,
-                :size => (dc.getFontHeight(Graphics.FONT_XTINY) * 0.8).toNumber()
-            });
+            // Sizes are a fraction of the dial radius, calibrated to MARQ 2 (REF_*), so
+            // text keeps the same proportion on every device regardless of that device's
+            // bitmap-font sizes. Each font falls back to the device bitmap font (in
+            // roleFont/vfont) if the scalable face isn't available.
+            var w = dc.getWidth();
+            var h = dc.getHeight();
+            var radius = (w < h ? w : h) / 2;
+            var scale = radius / REF_RADIUS;
+            var xtinyPx = (REF_XTINY * scale).toNumber();
+            var tinyPx = (REF_TINY * scale).toNumber();
+            _vectorFont = Graphics.getVectorFont({ :face => faces, :size => (xtinyPx * 1.15).toNumber() }); // radial fields
+            _labelFont = Graphics.getVectorFont({ :face => faces, :size => (xtinyPx * 0.8).toNumber() });   // N/S labels + small values
+            _xtinyFont = Graphics.getVectorFont({ :face => faces, :size => xtinyPx });
+            _valueFont = Graphics.getVectorFont({ :face => faces, :size => tinyPx });
         }
     }
 
@@ -1019,7 +1035,7 @@ class AnalogView extends WatchUi.WatchFace {
         // (renders outside the baseline), bottom uses CCW (renders inside it),
         // so push the bottom radius out to keep all four the same distance.
         var rTop = radius * 0.82;
-        var rBot = rTop + dc.getFontHeight(Graphics.FONT_XTINY) * 0.75;
+        var rBot = rTop + fontH(dc, Graphics.FONT_XTINY) * 0.75;
         var cw = Graphics.RADIAL_TEXT_DIRECTION_CLOCKWISE;
         var ccw = Graphics.RADIAL_TEXT_DIRECTION_COUNTER_CLOCKWISE;
         bdc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
@@ -1150,10 +1166,13 @@ class AnalogView extends WatchUi.WatchFace {
         return _southern;
     }
 
-    //! Observer location for astronomy: GPS fix first, weather observation point
-    //! fallback. Rejects an out-of-range latitude (the simulator defaults to
-    //! lat/lon = 180 deg after a restart) so a bad fix degrades to "no location"
-    //! -- a neutral moon -- instead of producing nonsense tilt/rise/set.
+    //! Observer location for astronomy: GPS fix first, then the weather observation
+    //! point, then a fixed default. An out-of-range latitude (the simulator's
+    //! uninitialised GPS reports lat/lon = 180) is treated the same as a missing fix at
+    //! each step -- so a garbage GPS falls back to the *weather* location (matching
+    //! sunLocation / the sun ring) rather than jumping straight to the default. The
+    //! default (Gothenburg) is a last resort (no GPS *and* no weather) so the moon still
+    //! renders in the sim; it's dead code on a watch (real GPS is always within +/-90).
     private function observerLoc() as Position.Location or Null {
         var loc = null;
         if (Toybox has :Position) {
@@ -1162,24 +1181,27 @@ class AnalogView extends WatchUi.WatchFace {
                 loc = pinfo.position;
             }
         }
-        if (loc == null) {
-            loc = sunLocation();
+        if (locUnusable(loc)) {
+            loc = sunLocation();  // weather observation point (then its own GPS fallback)
         }
-        if (loc != null) {
-            var latR = loc.toRadians()[0] as Float;
-            if (latR > 1.58 || latR < -1.58) {
-                // Out-of-range latitude only comes from the simulator's
-                // uninitialised GPS (lat/lon = 180); real GPS is always within
-                // +/-90, so this branch is dead on a watch. Default to a fixed
-                // location (Gothenburg) so the moon arc/tilt still render in the sim.
-                loc = new Position.Location({
-                    :latitude => 57.7089,
-                    :longitude => 11.9746,
-                    :format => :degrees
-                });
-            }
+        if (locUnusable(loc)) {
+            loc = new Position.Location({
+                :latitude => 57.6114,
+                :longitude => 11.7858,
+                :format => :degrees
+            });
         }
         return loc;
+    }
+
+    //! True if a location is null or has an impossible latitude (|lat| > ~90.5 deg).
+    //! Only the simulator's uninitialised GPS (lat/lon = 180) produces out-of-range.
+    private function locUnusable(loc as Position.Location or Null) as Boolean {
+        if (loc == null) {
+            return true;
+        }
+        var latR = loc.toRadians()[0] as Float;
+        return latR > 1.58 || latR < -1.58;
     }
 
     //! Location for sun calculations: prefer the cached weather observation
@@ -1452,7 +1474,7 @@ class AnalogView extends WatchUi.WatchFace {
             if (_wStepsHr) {
                 // W is the small two-line steps+HR composite: match it so E and W
                 // align -- both lines small, persian-style padding (fh*0.5).
-                var dy = dc.getFontHeight(Graphics.FONT_XTINY) * 0.5;
+                var dy = fontH(dc, Graphics.FONT_XTINY) * 0.5;
                 dc.drawText(rightX, cy - dy, vfont(Graphics.FONT_XTINY, SLOT_E), dateText(), j);
                 dc.drawText(rightX, cy + dy, vfont(Graphics.FONT_XTINY, SLOT_E), weekdayText(), j);
             } else {
@@ -1526,11 +1548,28 @@ class AnalogView extends WatchUi.WatchFace {
         return false;
     }
 
-    //! The font to draw a value in: _labelFont (0.8x vector) when this field's "small
-    //! values" toggle is on and a vector font is available, else the given font -- so
-    //! when the toggle is off this is the identity and rendering is exactly as before.
+    //! The proportional vector font for a bitmap role (FONT_TINY/FONT_XTINY), or the
+    //! bitmap font itself when no scalable face was available (the fallback).
+    private function roleFont(bm as Graphics.FontType) as Graphics.FontType or Graphics.VectorFont {
+        if (bm == Graphics.FONT_TINY) { return _valueFont != null ? _valueFont : bm; }
+        if (bm == Graphics.FONT_XTINY) { return _xtinyFont != null ? _xtinyFont : bm; }
+        return bm;
+    }
+
+    //! Height of the font actually used for a bitmap role -- measured on the resolved
+    //! (vector or fallback) font so layout offsets track the rendered glyphs.
+    private function fontH(dc as Graphics.Dc, bm as Graphics.FontType) as Number {
+        return dc.getFontHeight(roleFont(bm));
+    }
+
+    //! The font to draw a value in: the per-field "small values" font (_labelFont, the
+    //! smaller proportional vector) when that field's toggle is on, else the proportional
+    //! vector font for the role (bitmap fallback in roleFont).
     private function vfont(current as Graphics.FontType, slot as Number) as Graphics.FontType or Graphics.VectorFont {
-        return (smallForSlot(slot) && _labelFont != null) ? _labelFont : current;
+        if (smallForSlot(slot)) {
+            return _labelFont != null ? _labelFont : Graphics.FONT_XTINY;
+        }
+        return roleFont(current);
     }
 
     //! Thin horizontal precip-chance bar (amber fill over a dark track) centred
@@ -1558,7 +1597,7 @@ class AnalogView extends WatchUi.WatchFace {
         // Compact look: when W and E are both two-line composites, shrink N/S to
         // the small font too so all four data fields match.
         var cardFont = (_wStepsHr && _eDateWeekday) ? Graphics.FONT_XTINY : Graphics.FONT_TINY;
-        var textH = dc.getFontHeight(cardFont);
+        var textH = fontH(dc, cardFont);
         if (slot == SLOT_N && _nText) {
             // "Show text": just the user's string, nudged up a bit; no value/heart/label.
             dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
@@ -1600,7 +1639,7 @@ class AnalogView extends WatchUi.WatchFace {
         if (t == Complications.COMPLICATION_TYPE_HEART_RATE) {
             if (!_isSleeping) {
                 dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-                var iconH = dc.getFontHeight(Graphics.FONT_XTINY) * 0.65;
+                var iconH = fontH(dc, Graphics.FONT_XTINY) * 0.65;
                 drawHeart(dc, x, isNorth ? (vy - textH) : (vy + textH), iconH / 0.6875);
             }
         } else if (t != null) {
@@ -1633,7 +1672,7 @@ class AnalogView extends WatchUi.WatchFace {
     //! Persian Solar for the S slot: Jalali date over Tehran time, BOTH in the
     //! smaller font (FONT_XTINY), stacked around (x, y).
     private function drawPersianSmall(dc as Graphics.Dc, x as Numeric, y as Numeric) as Void {
-        var fh = dc.getFontHeight(Graphics.FONT_XTINY);
+        var fh = fontH(dc, Graphics.FONT_XTINY);
         var just = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
         dc.setColor(_dataColor, Graphics.COLOR_TRANSPARENT);
         dc.drawText(x, y - fh * 0.5, vfont(Graphics.FONT_XTINY, SLOT_S), persianDateText(), just);
@@ -1647,7 +1686,7 @@ class AnalogView extends WatchUi.WatchFace {
     private function drawStepsHr(dc as Graphics.Dc, x as Numeric, cy as Numeric) as Void {
         var steps = stepsText();
         var hr = heartRateText();
-        var fh = dc.getFontHeight(Graphics.FONT_XTINY);
+        var fh = fontH(dc, Graphics.FONT_XTINY);
         var dy = fh * 0.5;
         var lx = x - 8;   // nudge the whole composite a bit left
         var hsize = fh * 0.6;

@@ -27,7 +27,7 @@ The dial carries data fields you choose — heart rate, steps, calories, body ba
 Make it yours, all from Garmin Connect:
 - Accent and data colours, and the moon-arc colour (or hide the arc)
 - The central image — moon, cat, fox, polar bear or seal (each still shows the phase)
-- A brushed-metal finish for the hands, a ring of second tick marks (any colour, or off), south/north markers on the day-night ring, and other display toggles
+- A brushed-metal finish for the hands, a ring of second tick marks (any colour, or off), south/north markers on the day-night ring, the radial gradient, and per-field small fonts
 - A world timezone for the corner clock, with automatic daylight saving
 - Seven configurable fields — pick a complication for each, hide any, or choose a special mode: a Persian Solar date with the Tehran clock, a weather readout, the date with weekday, steps and heart rate, or your own custom text
 
