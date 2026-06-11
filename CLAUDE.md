@@ -78,4 +78,6 @@ Don't run `deno fmt`/lint or tests; no `sudo`. Match surrounding code style.
 
 - **Use markdown links** for file references: `[doc.md](path/to/doc.md)` not `` `path/to/doc.md` ``
 - **Align table columns** by padding cells to consistent widths
-- **No AI-isms in user-facing text.** Keep prose direct and concrete.
+- **No AI-isms in user-facing text.** Keep prose direct and concrete. Never use '—' or '–'.
+- **No clever-sounding filler jargon** (load-bearing, footgun, first-class, table stakes, low-hanging fruit, heavy lifting, battle-tested, leverage, utilize, robust, seamless, elegant, blazingly fast, and the like). Say the plain, concrete thing; precise domain terms are fine.
+- **Avoid the "not just X, but Y" / "it's not X, it's Y" construction and rule-of-three triplets.** Both are AI tells; state the point directly.

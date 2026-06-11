@@ -1,4 +1,4 @@
-# Connect IQ Store listing — Moonkey
+# Connect IQ Store listing: Moonkey
 
 Draft copy + asset checklist for the production store submission. **Production is a
 NEW store app with its own permanent id** (`ec31f7e162fb48578ddc754d58d040bb`,
@@ -11,23 +11,23 @@ via the normal Submit-an-App flow, and freeze the prod id forever. See
 [CLAUDE.md](../CLAUDE.md).
 
 ## Short summary (one-liner field)
-The real Moon at the center of an analog face — shaded for tonight's phase and tilted to match your sky.
+The real Moon at the center of an analog face, shaded for tonight's phase and tilted to match your sky.
 
 ## Full description
-Moonkey is an analog watch face for AMOLED Garmin watches built around a real image of the Moon. It's shaded for tonight's exact phase and rotated to the inclination the Moon actually shows in your sky — the terminator tilts for your latitude and the time of night, not a generic icon. A thin ring around the disc traces its time above the horizon, moonrise to moonset.
+Moonkey is an analog watch face for AMOLED Garmin watches built around a real image of the Moon. It's shaded for tonight's exact phase and rotated to the inclination the Moon actually shows in your sky: the terminator tilts for your latitude and the time of night, not a generic icon. A thin ring around the disc traces its time above the horizon, moonrise to moonset.
 
-A 24-hour day/night ring surrounds it (midnight up, noon down): an amber arc for daylight from your local sunrise to sunset, a current-time pointer, a sun ring that brightens toward midday, and optional markers pointing out south and north. The hands read by shape, not length — an hour baton ending in an open ring, a tapered minute lance, and a white second hand tipped in amber.
+A 24-hour day/night ring surrounds it (midnight up, noon down): an amber arc for daylight from your local sunrise to sunset, a current-time pointer, a sun ring that brightens toward midday, and optional markers pointing out south and north. The hands read by shape, not length: an hour baton ending in an open ring, a tapered minute lance, and a white second hand tipped in amber.
 
-Data fields you choose ring the dial — heart rate, steps, calories, body battery, intensity, floors, altitude and more — plus weather (icon, temperature, precipitation-chance bar, wind barb), date, time, and a second-timezone clock.
+Data fields you choose ring the dial: heart rate, steps, calories, body battery, intensity, floors, altitude and more, plus weather (icon, temperature, precipitation-chance bar, wind barb), date, time, and a second-timezone clock.
 
 Make it yours from Garmin Connect:
 - Accent and data colours, and the moon-arc colour (or hidden)
 - Central image: moon, cat, fox, polar bear or seal (all phase-shaded)
 - Brushed-metal hands, a second-tick track, south/north markers, the radial gradient, and per-field small fonts
 - A world timezone with automatic daylight saving
-- Seven fields — pick a complication, hide it, or choose a mode: Persian Solar date + Tehran clock, weather, date + weekday, steps + heart rate, or custom text
+- Seven fields, each a complication, hidden, or a special mode: Persian Solar date + Tehran clock, weather, date + weekday, steps + heart rate, or custom text
 
-Everything is computed on the watch — no internet — and tracks published almanacs to within a few minutes. Always-on aware: colours stay, battery-hungry detail dims. Location is used only for sun and Moon math and never leaves the watch.
+Everything is computed on the watch (no internet) and tracks published almanacs to within a few minutes. Always-on aware: colours stay, battery-hungry detail dims. Location is used only for sun and Moon math and never leaves the watch.
 
 ## Submission metadata
 - **Category:** Watch Face
@@ -35,20 +35,20 @@ Everything is computed on the watch — no internet — and tracks published alm
 - **Languages:** English (eng)
 - **Version:** set a real release at upload (e.g. `1.0.0`), not `0.0.1-beta` (no version attr lives in the manifest)
 - **Permissions to justify in review:** Positioning (sun/Moon location, on-device only), ComplicationSubscriber (configurable fields)
-- **Privacy / GDPR:** no personal data collected or transmitted — location is used on-device only; state this in the listing. No privacy policy required while nothing leaves the watch.
-- **Asset rights:** all bundled imagery is the author's and free to redistribute, with no third-party-owned assets — the Moon photo (`data/moon-raw.jpg`) is the author's own photograph; the animal images (cat / fox / polar bear / seal) are the author's.
+- **Privacy / GDPR:** no personal data collected or transmitted: location is used on-device only; state this in the listing. No privacy policy required while nothing leaves the watch.
+- **Asset rights:** all bundled imagery is the author's and free to redistribute, with no third-party-owned assets. The Moon photo (`data/moon-raw.jpg`) is the author's own photograph; the animal images (cat / fox / polar bear / seal) are the author's.
 
 ## Assets to upload
-Icons/hero are generated by `make store-assets`, screenshots by `make gallery` (all from the Moon photo / sim — no hand editing):
+Icons/hero are generated by `make store-assets`, screenshots by `make gallery` (all from the Moon photo / sim, no hand editing):
 
-- **Store icon** — 500×500 — [`docs/store-icon.png`](../docs/store-icon.png) · `make store-icon`
-- **On-device icon** — 128×128, full-colour [`docs/icon-128.png`](../docs/icon-128.png) · `make on-device-icon`. The 64-colour MIP variant [`docs/icon-128-lc.png`](../docs/icon-128-lc.png) is also generated, but the portal only shows a low-colour upload field when a **memory-in-pixel** device is in the product list — Moonkey is AMOLED-only, so there's no field for it today (kept in case a MIP target is ever added).
-- **Hero** — 1440×720 — [`docs/store-hero.png`](../docs/store-hero.png) · `make hero`
-- **Screenshots** — [`docs/cfg-default.png`](../docs/cfg-default.png) (marq2aviator), [`docs/cfg-loaded.png`](../docs/cfg-loaded.png), [`docs/cfg-fox.png`](../docs/cfg-fox.png), [`docs/cfg-minimal.png`](../docs/cfg-minimal.png) (fenix 8), and [`docs/snap.png`](../docs/snap.png) · `make gallery`. The `cfg-*` shots are transparent full-device renders; flatten onto a background (or crop to the dial) if the portal needs opaque. A round venu3 shot would round out the set.
+- **Store icon** (500×500): [`docs/store-icon.png`](../docs/store-icon.png) · `make store-icon`
+- **On-device icon** (128×128): full-colour [`docs/icon-128.png`](../docs/icon-128.png) · `make on-device-icon`. The 64-colour MIP variant [`docs/icon-128-lc.png`](../docs/icon-128-lc.png) is also generated, but the portal only shows a low-colour upload field when a **memory-in-pixel** device is in the product list, and Moonkey is AMOLED-only, so there's no field for it today (kept in case a MIP target is ever added).
+- **Hero** (1440×720): [`docs/store-hero.png`](../docs/store-hero.png) · `make hero`
+- **Screenshots**: [`docs/cfg-default.png`](../docs/cfg-default.png) (marq2aviator), [`docs/cfg-loaded.png`](../docs/cfg-loaded.png), [`docs/cfg-fox.png`](../docs/cfg-fox.png), [`docs/cfg-minimal.png`](../docs/cfg-minimal.png) (fenix 8), and [`docs/snap.png`](../docs/snap.png) · `make gallery`. The `cfg-*` shots are transparent full-device renders; flatten onto a background (or crop to the dial) if the portal needs opaque. A round venu3 shot would round out the set.
 
 Still to do before submit:
 - [ ] `make package` → `bin/moonkey.iq` (8 products / 11 hardware variants); confirm it runs on the variants not physically tested
-- [x] Per-device launcher icons (60/65/70 px) — done via `resources-launcher/` + `make launcher-icons` (clears the scale warning)
+- [x] Per-device launcher icons (60/65/70 px): done via `resources-launcher/` + `make launcher-icons` (clears the scale warning)
 
 ## Tone alternatives (if wanted)
 Current tone is utilitarian/precise. A more playful opener could lead with the Moon

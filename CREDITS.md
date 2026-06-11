@@ -8,8 +8,8 @@ assets or icons are included.
 
 - The Moon photograph (`data/moon-raw.jpg`) and the baked dial bitmap
   (`resources/drawables/moon.png`) are the author's own photograph.
-- The alternate centre images — cat, fox, polar bear and seal
-  (`resources/drawables/{cat,fox,polarbear,seal}.png`) are the author's.
+- The alternate centre images (cat, fox, polar bear and seal,
+  `resources/drawables/{cat,fox,polarbear,seal}.png`) are the author's.
 - The store/launcher artwork in `docs/` and `resources-launcher/` is generated from the
   Moon photo by the `make store-assets` / `make launcher-icons` targets.
 
@@ -17,8 +17,8 @@ On-device text uses the watch's built-in system/vector fonts supplied by the Gar
 device; no fonts are bundled with the app.
 
 ## Astronomy
-The ephemeris is implemented independently in `src/Astro.mc` from published algorithms —
-no third-party code is included:
+The ephemeris is implemented independently in `source/Astro.mc` from published algorithms.
+No third-party code is included:
 
 - **Moon** position: principal periodic terms from Jean Meeus, *Astronomical Algorithms*
   (chapter 47).
