@@ -183,10 +183,10 @@ module Astro {
         var rate = 14.492; // mean lunar diurnal rate, deg/hr
         var h0 = 0.125 * rad; // moon standard altitude (refraction + ~parallax)
         var p0 = moonEqAt(ddNow, rad);
-        // Transit: Newton on the hour angle, re-evaluating the moving position.
-        // Done before the rise/set guards so transit is returned even when the moon
-        // is circumpolar or never up (transit depends on RA + longitude, not latitude,
-        // so it always exists). Element [3] = local clock hour of the meridian crossing.
+        // Transit: Newton on the hour angle, re-evaluating the moving position. Computed
+        // before the rise/set guards so it is returned even when the moon is circumpolar
+        // or never up (transit depends on RA + longitude, not latitude). Element [3] =
+        // local clock hour of the meridian crossing.
         var tt = ddNow;
         for (var k = 0; k < 2; k++) {
             var pk = moonEqAt(tt, rad);

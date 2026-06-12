@@ -483,24 +483,10 @@ class AnalogView extends WatchUi.WatchFace {
         }
     }
 
-    //! Is the moon above the horizon at local clock hour h? Uses the cached
-    //! rise/set span (wrap-aware) and state (1 up all day; 2/3 not visible).
-    private function moonUpNow(h as Float) as Boolean {
-        if (_mrsState == 1) {
-            return true;
-        }
-        if (_mrsState == 2 || _mrsState == 3) {
-            return false;
-        }
-        if (_mrsRise <= _mrsSet) {
-            return h >= _mrsRise && h < _mrsSet;
-        }
-        return h >= _mrsRise || h < _mrsSet;
-    }
-
 
     //! Thin ring hugging the moon showing its above-horizon span (moonrise ->
-    //! moonset), with a current-time pointer. Recomputed hourly; interactive only.
+    //! moonset). Recomputed hourly; interactive only. (The moon-vs-sun position dot is
+    //! drawn at this radius by drawDayNightArc.)
     private function drawMoonArc(dc as Graphics.Dc, cx as Number, cy as Number, radius as Number) as Void {
         if (_moonArcHidden) {
             return; // "transparent" setting -> no arc
@@ -518,7 +504,6 @@ class AnalogView extends WatchUi.WatchFace {
             dc.drawArc(cx, cy, ar, Graphics.ARC_CLOCKWISE,
                 hourToArcDegrees(_mrsRise), hourToArcDegrees(_mrsSet));
         }
-        // No current-time pointer: the day/night arc already marks "now".
     }
 
     //! Draw one horizontal shadow segment ([u0,u1] mapped to x, clamped to the
@@ -1375,18 +1360,33 @@ class AnalogView extends WatchUi.WatchFace {
         var pointerColor = _accentColor;
         var clock = System.getClockTime();
         var h = clock.hour + clock.min / 60.0;
-        // Lunar-transit dot: a grey marker at the moon's meridian crossing (clock
-        // time), shown only while the moon is above the horizon now -- the same
-        // sun-relative clock mapping as the now-pointer, so the gap to the daylight
-        // midpoint reads as elongation/phase and the gap to "now" as hour angle.
-        // Painted before the now-pointer so the amber "now" dot wins on coincidence.
-        // AOD-dropped; skipped when there is no location (_mrsState 3).
+        // Moon position dot, drawn at the moon-arc radius (just inside the day/night
+        // ring). Angle = the moon's E-W position in the now-pointer's units (anchored to
+        // the true solar transit = daylight-arc midpoint), so its gap to the now-pointer
+        // is the true moon-sun separation. Shown whenever the moon arc itself is drawn:
+        // gated by the moon-ring setting (hidden when the arc is None) and by having a
+        // location + a moon that rises today, NOT by the rise/set angles. AOD-dropped.
         if (!_isSleeping) {
             ensureMrs();
-            if (moonUpNow(h)) {
-                var mta = _mrsTransit * Math.PI / 12.0;
-                dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
-                dc.fillCircle(cx + r * Math.sin(mta), cy - r * Math.cos(mta), 4);
+            if (!_moonArcHidden && _mrsState != 2 && _mrsState != 3) {
+                var sunTr = 12.0; // true solar transit (local hour) = daylight-arc midpoint
+                if (sr != null && ss != null) {
+                    var srH = localHour(sr);
+                    var ssH = localHour(ss);
+                    sunTr = (srH + ssH) / 2.0;
+                    if (ssH < srH) { sunTr += 12.0; } // daylight span wraps midnight
+                }
+                var mr = (radius * 0.22).toNumber(); // moon-arc radius
+                var td = h - _mrsTransit + sunTr;        // dot's clock-equivalent angle
+                td = td - 24.0 * Math.floor(td / 24.0);  // wrap to [0,24)
+                var mta = td * Math.PI / 12.0;
+                // Small when the dot's angle is outside the moon arc's start/stop span
+                // (state 1 = circumpolar = full circle, so always inside).
+                var onArc = _mrsState == 1 ||
+                    (_mrsRise <= _mrsSet ? (td >= _mrsRise && td < _mrsSet)
+                                        : (td >= _mrsRise || td < _mrsSet));
+                dc.setColor(_moonArcColor, Graphics.COLOR_TRANSPARENT);
+                dc.fillCircle(cx + mr * Math.sin(mta), cy - mr * Math.cos(mta), onArc ? 4 : 2);
             }
         }
         var a = h * Math.PI / 12.0; // radians clockwise from the top (midnight at top)
