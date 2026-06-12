@@ -15,7 +15,9 @@ data fields.
   true sky inclination for your location (bright-limb position angle − parallactic angle), all
   baked into a cached bitmap once per hour so each frame is a cheap blit. Position comes from a
   Meeus lunar series (verified against the `solunar` ephemeris), and a thin arc around the disc
-  traces the Moon's above-horizon span (moonrise→moonset).
+  traces the Moon's above-horizon span (moonrise→moonset). While the Moon is up, a grey dot on the
+  day/night ring marks its transit (highest point), so its offset from the current-time pointer shows
+  how far the Moon is from due south right now.
 - **24-hour day/night ring**: midnight at top, noon at bottom; an amber arc spans daylight
   (computed sunrise→sunset), a pointer marks the current time, and a gradient "sun ring" peaks at
   the sun's meridian crossing. Optional **N/S compass markers** mark south and north on the ring

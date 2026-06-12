@@ -168,6 +168,7 @@ class AnalogView extends WatchUi.WatchFace {
     private var _mrsRise as Float = 0.0;
     private var _mrsSet as Float = 0.0;
     private var _mrsState as Number = 3;
+    private var _mrsTransit as Float = 0.0; // local clock hour of the lunar meridian crossing (transit)
     private var _mrsBucket as Number = -1;
     // Observer hemisphere, cached once a location is known (never changes).
     private var _southern as Boolean = false;
@@ -455,17 +456,46 @@ class AnalogView extends WatchUi.WatchFace {
         return Astro.brightLimbTilt(dd, ecl, ll[0].toFloat(), (ll[1] / rad).toFloat());
     }
 
-    //! Moonrise/moonset as local clock hours: [rise, set, state] (Astro.moonRiseSet,
-    //! iterated ~few min). state 3 = no location.
+    //! Moonrise/moonset as local clock hours: [rise, set, state, transit]
+    //! (Astro.moonRiseSet, iterated ~few min). state 3 = no location.
     private function moonRiseSet() as Lang.Array {
         var loc = observerLoc();
         if (loc == null) {
-            return [0.0, 0.0, 3];
+            return [0.0, 0.0, 3, 0.0];
         }
         var ll = loc.toRadians();
         var rad = Math.PI / 180.0;
         return Astro.moonRiseSet(Astro.daysSinceJ2000(Time.now().value()),
             ll[0].toFloat(), (ll[1] / rad).toFloat(), System.getClockTime().timeZoneOffset);
+    }
+
+    //! Refresh the cached moonrise/set/transit once per hour bucket (idempotent,
+    //! one comparison when already current). Used by the moon arc and transit dot.
+    private function ensureMrs() as Void {
+        var bucket = (Time.now().value() / 3600).toNumber();
+        if (bucket != _mrsBucket) {
+            _mrsBucket = bucket;
+            var rs = moonRiseSet();
+            _mrsRise = rs[0];
+            _mrsSet = rs[1];
+            _mrsState = rs[2];
+            _mrsTransit = rs[3];
+        }
+    }
+
+    //! Is the moon above the horizon at local clock hour h? Uses the cached
+    //! rise/set span (wrap-aware) and state (1 up all day; 2/3 not visible).
+    private function moonUpNow(h as Float) as Boolean {
+        if (_mrsState == 1) {
+            return true;
+        }
+        if (_mrsState == 2 || _mrsState == 3) {
+            return false;
+        }
+        if (_mrsRise <= _mrsSet) {
+            return h >= _mrsRise && h < _mrsSet;
+        }
+        return h >= _mrsRise || h < _mrsSet;
     }
 
 
@@ -475,14 +505,7 @@ class AnalogView extends WatchUi.WatchFace {
         if (_moonArcHidden) {
             return; // "transparent" setting -> no arc
         }
-        var bucket = (Time.now().value() / 3600).toNumber();
-        if (bucket != _mrsBucket) {
-            _mrsBucket = bucket;
-            var rs = moonRiseSet();
-            _mrsRise = rs[0];
-            _mrsSet = rs[1];
-            _mrsState = rs[2];
-        }
+        ensureMrs();
         if (_mrsState == 3 || _mrsState == 2) {
             return; // no location, or moon never up today -> no arc
         }
@@ -1352,6 +1375,20 @@ class AnalogView extends WatchUi.WatchFace {
         var pointerColor = _accentColor;
         var clock = System.getClockTime();
         var h = clock.hour + clock.min / 60.0;
+        // Lunar-transit dot: a grey marker at the moon's meridian crossing (clock
+        // time), shown only while the moon is above the horizon now -- the same
+        // sun-relative clock mapping as the now-pointer, so the gap to the daylight
+        // midpoint reads as elongation/phase and the gap to "now" as hour angle.
+        // Painted before the now-pointer so the amber "now" dot wins on coincidence.
+        // AOD-dropped; skipped when there is no location (_mrsState 3).
+        if (!_isSleeping) {
+            ensureMrs();
+            if (moonUpNow(h)) {
+                var mta = _mrsTransit * Math.PI / 12.0;
+                dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
+                dc.fillCircle(cx + r * Math.sin(mta), cy - r * Math.cos(mta), 4);
+            }
+        }
         var a = h * Math.PI / 12.0; // radians clockwise from the top (midnight at top)
         var px = cx + r * Math.sin(a);
         var py = cy - r * Math.cos(a);

@@ -183,25 +183,29 @@ module Astro {
         var rate = 14.492; // mean lunar diurnal rate, deg/hr
         var h0 = 0.125 * rad; // moon standard altitude (refraction + ~parallax)
         var p0 = moonEqAt(ddNow, rad);
-        var cosH0 = (Math.sin(h0) - Math.sin(latR) * Math.sin(p0[1])) / (Math.cos(latR) * Math.cos(p0[1]));
-        if (cosH0 > 1.0) {
-            return [0.0, 0.0, 2]; // never rises
-        }
-        if (cosH0 < -1.0) {
-            return [0.0, 0.0, 1]; // circumpolar, never sets
-        }
         // Transit: Newton on the hour angle, re-evaluating the moving position.
+        // Done before the rise/set guards so transit is returned even when the moon
+        // is circumpolar or never up (transit depends on RA + longitude, not latitude,
+        // so it always exists). Element [3] = local clock hour of the meridian crossing.
         var tt = ddNow;
         for (var k = 0; k < 2; k++) {
             var pk = moonEqAt(tt, rad);
             var ha = normDeg180((pk[2] + lonDeg) - pk[0]); // deg
             tt -= (ha / rate) / 24.0; // days
         }
+        var transit = localHourFromDd(tt, tzoSec);
+        var cosH0 = (Math.sin(h0) - Math.sin(latR) * Math.sin(p0[1])) / (Math.cos(latR) * Math.cos(p0[1]));
+        if (cosH0 > 1.0) {
+            return [0.0, 0.0, 2, transit]; // never rises
+        }
+        if (cosH0 < -1.0) {
+            return [0.0, 0.0, 1, transit]; // circumpolar, never sets
+        }
         var riseDd = horizonCross(tt, -1, latR, h0, rate, rad);
         var setDd = horizonCross(tt, 1, latR, h0, rate, rad);
         if (riseDd == null || setDd == null) {
-            return [0.0, 0.0, 1]; // grazing under iteration -> treat as up
+            return [0.0, 0.0, 1, transit]; // grazing under iteration -> treat as up
         }
-        return [localHourFromDd(riseDd as Float, tzoSec), localHourFromDd(setDd as Float, tzoSec), 0];
+        return [localHourFromDd(riseDd as Float, tzoSec), localHourFromDd(setDd as Float, tzoSec), 0, transit];
     }
 }
