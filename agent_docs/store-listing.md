@@ -14,7 +14,7 @@ via the normal Submit-an-App flow, and freeze the prod id forever. See
 The real Moon at the center of an analog face, shaded for tonight's phase and tilted to match your sky.
 
 ## Full description
-Moonkey is an analog watch face for AMOLED Garmin watches built around a real image of the Moon. It's shaded for tonight's exact phase and rotated to the inclination the Moon actually shows in your sky: the terminator tilts for your latitude and the time of night, not a generic icon. A thin ring around the disc traces its time above the horizon, moonrise to moonset.
+Moonkey is an analog watch face for AMOLED Garmin watches built around a real image of the Moon. It's shaded for tonight's phase and rotated to the inclination the Moon actually shows in your sky: the terminator tilts for your latitude and the time of night, not a generic icon. A thin ring around the disc traces its time above the horizon, moonrise to moonset.
 
 A 24-hour day/night ring surrounds it (midnight up, noon down): an amber arc for daylight from your local sunrise to sunset, a current-time pointer, a sun ring that brightens toward midday, and optional markers pointing out south and north. The hands read by shape, not length: an hour baton ending in an open ring, a tapered minute lance, and a white second hand tipped in amber.
 
