@@ -27,16 +27,22 @@ MOON_RAW  := data/moon-raw.jpg
 MOON_PNG  := resources/drawables/moon.png
 MOON_CROP := 1600x1600+739+1243
 
-# Connect IQ Store assets (per Garmin brand guidelines): all built from a shared
-# left-lit shaded-crescent intermediate ($(CRESCENT)) of the real Moon photo + a thin
-# amber ring on a night-navy gradient. Uploaded separately in the dev portal (these are
-# NOT the in-watch launcher icon). store icon 500x500; on-device icon 128x128 (full +
-# 64-colour MIP variant); hero 1440x720.
+# Connect IQ Store assets. The store icon + hero are real watch-face screenshots
+# (the convention on the CIQ store), cut out of the gallery renders by scripts/cut-face.sh
+# (crop the device's screen rect + circular mask). The on-device/launcher icon stays a
+# designed crescent glyph ($(CRESCENT)) since that is the in-watch app-list icon, not a shot.
+# store icon 500x500; hero 1440x720; on-device icon 128x128 (full + 64-colour MIP variant).
 CRESCENT   := $(BIN)/moon-crescent.png
 STORE_ICON := docs/store-icon.png
 ICON_FULL  := docs/icon-128.png
 ICON_LC    := docs/icon-128-lc.png
 HERO       := docs/store-hero.png
+# Bare round face cut from a cfg render: screen rect (= simulator.json display.location)
+# and circle radius, per source device. cfg PNGs are the device skin at 1:1.
+MARQ_FACE  := 390x390+149+234   # marq2aviator screen, r=195 (cfg-default)
+MARQ_R     := 195
+FENIX_FACE := 416x416+96+196    # fenix843mm screen, r=208 (cfg-fox/loaded/minimal)
+FENIX_R    := 208
 # Bolder crescent (fatter lit fraction, deeper shadow, tighter terminator) for the tiny
 # per-device launcher icons, where the store crescent's thin sliver/ring turns muddy.
 CRESCENT_BOLD := $(BIN)/moon-crescent-bold.png
@@ -107,11 +113,10 @@ $(CRESCENT): $(MOON_RAW)
 	  -alpha off -compose CopyOpacity -composite \
 	  -background none -virtual-pixel none -distort SRT -12 $@
 
-store-icon: $(CRESCENT) ## Regenerate data/store-icon.png (500x500 CIQ Store listing icon)
-	magick -size 500x500 radial-gradient:#1b2c48-#0a1322 \
-	  $(CRESCENT) -gravity center -compose over -composite \
-	  -fill none -stroke "#FFAA00" -strokewidth 4 -draw "circle 250,250 250,52" \
-	  -strip -colorspace sRGB $(STORE_ICON)
+store-icon: docs/cfg-default.png ## Regenerate docs/store-icon.png (500x500 cover: the round face, transparent)
+	@mkdir -p $(BIN)
+	./scripts/cut-face.sh docs/cfg-default.png $(MARQ_FACE) $(MARQ_R) $(BIN)/face-default.png
+	magick $(BIN)/face-default.png -resize 500x500 -strip $(STORE_ICON)
 	@echo "wrote $(STORE_ICON) ($$(stat -c%s $(STORE_ICON)) bytes)"
 
 on-device-icon: $(CRESCENT) ## Regenerate the 128x128 on-device icons (full-colour + 64-colour MIP)
@@ -122,11 +127,18 @@ on-device-icon: $(CRESCENT) ## Regenerate the 128x128 on-device icons (full-colo
 	magick $(ICON_FULL) -dither None -colors 64 -strip PNG8:$(ICON_LC)
 	@echo "wrote $(ICON_FULL) + $(ICON_LC) ($$(magick identify -format '%k' $(ICON_LC)) colours)"
 
-hero: $(CRESCENT) ## Regenerate data/store-hero.png (1440x720 listing hero)
+hero: docs/cfg-default.png docs/cfg-fox.png docs/cfg-loaded.png ## Regenerate docs/store-hero.png (1440x720: three faces on sky blue)
+	@mkdir -p $(BIN)
+	./scripts/cut-face.sh docs/cfg-default.png $(MARQ_FACE)  $(MARQ_R)  $(BIN)/face-default.png
+	./scripts/cut-face.sh docs/cfg-fox.png     $(FENIX_FACE) $(FENIX_R) $(BIN)/face-fox.png
+	./scripts/cut-face.sh docs/cfg-loaded.png  $(FENIX_FACE) $(FENIX_R) $(BIN)/face-loaded.png
 	magick -size 1440x720 radial-gradient:#1b2c48-#0a1322 \
-	  \( $(CRESCENT) -resize 480x480 \) -gravity center -compose over -composite \
-	  -fill none -stroke "#FFAA00" -strokewidth 5 -draw "circle 720,360 720,108" \
-	  -strip -colorspace sRGB $(HERO)
+	  \( $(BIN)/face-fox.png    -resize 400x400 \) -gravity West   -geometry +95+10  -composite \
+	  \( $(BIN)/face-loaded.png -resize 400x400 \) -gravity East   -geometry +95+10  -composite \
+	  \( $(BIN)/face-default.png -resize 560x560 \) -gravity Center -geometry +0-6   -composite \
+	  -gravity SouthEast -font DejaVu-Sans-ExtraLight -kerning 3 -pointsize 46 \
+	  -fill "rgba(222,230,242,0.62)" -annotate +48+36 "Moonkey" \
+	  -strip $(HERO)
 	@echo "wrote $(HERO) ($$(stat -c%s $(HERO)) bytes)"
 
 store-assets: store-icon on-device-icon hero ## Regenerate all store-listing assets (icon + on-device + hero)
