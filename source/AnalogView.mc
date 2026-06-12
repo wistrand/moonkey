@@ -168,8 +168,12 @@ class AnalogView extends WatchUi.WatchFace {
     private var _mrsRise as Float = 0.0;
     private var _mrsSet as Float = 0.0;
     private var _mrsState as Number = 3;
-    private var _mrsTransit as Float = 0.0; // local clock hour of the lunar meridian crossing (transit)
     private var _mrsBucket as Number = -1;
+    // Moon-sun elongation (RA difference) in radians, normalized to [-pi,pi], recomputed
+    // hourly. Drives the moon position dot: its gap to the now-pointer is this elongation.
+    // Computed from RA (smooth) rather than the transit-time difference, which jumped ~50 min
+    // when the nearest-transit reference flipped at the moon's anti-transit.
+    private var _moonElongRad as Float = 0.0;
     // Observer hemisphere, cached once a location is known (never changes).
     private var _southern as Boolean = false;
     private var _southernKnown as Boolean = false;
@@ -469,8 +473,8 @@ class AnalogView extends WatchUi.WatchFace {
             ll[0].toFloat(), (ll[1] / rad).toFloat(), System.getClockTime().timeZoneOffset);
     }
 
-    //! Refresh the cached moonrise/set/transit once per hour bucket (idempotent,
-    //! one comparison when already current). Used by the moon arc and transit dot.
+    //! Refresh the cached moonrise/set + moon-sun elongation once per hour bucket
+    //! (idempotent). Used by the moon arc and the moon position dot.
     private function ensureMrs() as Void {
         var bucket = (Time.now().value() / 3600).toNumber();
         if (bucket != _mrsBucket) {
@@ -479,7 +483,14 @@ class AnalogView extends WatchUi.WatchFace {
             _mrsRise = rs[0];
             _mrsSet = rs[1];
             _mrsState = rs[2];
-            _mrsTransit = rs[3];
+            // Moon-sun elongation from RA (geocentric; no location needed), [-pi,pi].
+            var rad = Math.PI / 180.0;
+            var dd = Astro.daysSinceJ2000(Time.now().value());
+            var ecl = (23.4393 - 3.563e-7 * dd) * rad;
+            var e = (Astro.moonRaDec(dd, ecl)[0] as Float) - (Astro.sunRaDec(dd, ecl)[0] as Float);
+            while (e > Math.PI) { e -= 2.0 * Math.PI; }
+            while (e <= -Math.PI) { e += 2.0 * Math.PI; }
+            _moonElongRad = e;
         }
     }
 
@@ -1360,33 +1371,19 @@ class AnalogView extends WatchUi.WatchFace {
         var pointerColor = _accentColor;
         var clock = System.getClockTime();
         var h = clock.hour + clock.min / 60.0;
-        // Moon position dot, drawn at the moon-arc radius (just inside the day/night
-        // ring). Angle = the moon's E-W position in the now-pointer's units (anchored to
-        // the true solar transit = daylight-arc midpoint), so its gap to the now-pointer
-        // is the true moon-sun separation. Shown whenever the moon arc itself is drawn:
-        // gated by the moon-ring setting (hidden when the arc is None) and by having a
-        // location + a moon that rises today, NOT by the rise/set angles. AOD-dropped.
+        // Moon position dot, on the day/night ring (radius r). Its gap to the amber
+        // now-pointer is the moon-sun elongation (`_moonElongRad`, from RA): coincident ~
+        // new, opposite ~ full. Angle = now-pointer angle minus the elongation, so it
+        // tracks the now-pointer smoothly with no transit-flip jump. Constant size; painted
+        // before the now-pointer so the amber dot wins on overlap. Gated by the moon-ring
+        // setting (hidden when the arc is None) + a location with a moon that rises today;
+        // AOD-dropped.
         if (!_isSleeping) {
             ensureMrs();
             if (!_moonArcHidden && _mrsState != 2 && _mrsState != 3) {
-                var sunTr = 12.0; // true solar transit (local hour) = daylight-arc midpoint
-                if (sr != null && ss != null) {
-                    var srH = localHour(sr);
-                    var ssH = localHour(ss);
-                    sunTr = (srH + ssH) / 2.0;
-                    if (ssH < srH) { sunTr += 12.0; } // daylight span wraps midnight
-                }
-                var mr = (radius * 0.22).toNumber(); // moon-arc radius
-                var td = h - _mrsTransit + sunTr;        // dot's clock-equivalent angle
-                td = td - 24.0 * Math.floor(td / 24.0);  // wrap to [0,24)
-                var mta = td * Math.PI / 12.0;
-                // Small when the dot's angle is outside the moon arc's start/stop span
-                // (state 1 = circumpolar = full circle, so always inside).
-                var onArc = _mrsState == 1 ||
-                    (_mrsRise <= _mrsSet ? (td >= _mrsRise && td < _mrsSet)
-                                        : (td >= _mrsRise || td < _mrsSet));
+                var mta = h * Math.PI / 12.0 - _moonElongRad;
                 dc.setColor(_moonArcColor, Graphics.COLOR_TRANSPARENT);
-                dc.fillCircle(cx + mr * Math.sin(mta), cy - mr * Math.cos(mta), onArc ? 4 : 2);
+                dc.fillCircle(cx + r * Math.sin(mta), cy - r * Math.cos(mta), 4);
             }
         }
         var a = h * Math.PI / 12.0; // radians clockwise from the top (midnight at top)
