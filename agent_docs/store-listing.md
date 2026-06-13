@@ -14,20 +14,23 @@ via the normal Submit-an-App flow, and freeze the prod id forever. See
 The real Moon at the center of an analog face, shaded for tonight's phase and tilted to match your sky.
 
 ## Full description
-Moonkey is an analog watch face for AMOLED Garmin watches built around a real image of the Moon. It's shaded for tonight's phase and rotated to the inclination the Moon actually shows in your sky: the terminator tilts for your latitude and the time of night, not a generic icon. A thin ring around the disc traces its time above the horizon, moonrise to moonset.
+Moonkey is an analog watch face for AMOLED Garmin watches built around a real image of the Moon.
+It's shaded for tonight's phase and rotated to the inclination the Moon actually shows in your sky: the terminator tilts for your latitude and the time of night. 
+A thin ring around the disc traces its time above the horizon, moonrise to moonset.
 
-A 24-hour day/night ring surrounds it (midnight up, noon down): an amber arc for daylight from your local sunrise to sunset, a current-time pointer, a sun ring that brightens toward midday, and optional markers pointing out south and north. The hands read by shape, not length: an hour baton ending in an open ring, a tapered minute lance, and a white second hand tipped in amber.
+A 24-hour day/night ring surrounds it (midnight up, noon down): an amber arc for daylight from your local sunrise to sunset, a current-time pointer, a sun ring that brightens toward midday, and optional markers pointing out south and north. 
 
 Data fields you choose ring the dial: heart rate, steps, calories, body battery, intensity, floors, altitude and more, plus weather (icon, temperature, precipitation-chance bar, wind barb), date, time, and a second-timezone clock.
 
-Make it yours from Garmin Connect:
+Customize using Garmin Connect:
 - Accent and data colours, and the moon-arc colour (or hidden)
 - Central image: moon, cat, fox, polar bear or seal (all phase-shaded)
 - Brushed-metal hands, a second-tick track, south/north markers, the radial gradient, and per-field small fonts
 - A world timezone with automatic daylight saving
 - Seven fields, each a complication, hidden, or a special mode: Persian Solar date + Tehran clock, weather, date + weekday, steps + heart rate, or custom text
 
-Everything is computed on the watch (no internet) and tracks published almanacs to within a few minutes. Always-on aware: colours stay, battery-hungry detail dims. Location is used only for sun and Moon math and never leaves the watch.
+Everything is computed on the watch (no internet) and tracks published almanacs to within a few minutes. 
+Always-on aware: colours stay, battery-hungry detail dims. Location is used only for sun and Moon math and never leaves the watch.
 
 ## Submission metadata
 - **Category:** Watch Face
