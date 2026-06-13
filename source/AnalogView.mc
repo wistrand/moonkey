@@ -1494,9 +1494,9 @@ class AnalogView extends WatchUi.WatchFace {
                 drawPrecipBar(dc, leftX, cy + 3, radius * 0.18, cond.precipitationChance);
             }
             drawValue(dc, leftX, cy + 22, temperatureText(), SLOT_W);
-            // Further left: wind barb (interactive only; skip light/calm wind < 4 m/s).
+            // Further left: wind barb (interactive only; skip calm wind < 2 m/s).
             if (!_isSleeping && cond != null && cond.windSpeed != null && cond.windBearing != null
-                    && cond.windSpeed >= 4.0) {
+                    && cond.windSpeed >= 2.0) {
                 drawWindBarb(dc, leftX - radius * 0.22, cy - radius * 0.02, radius * 0.11,
                     cond.windSpeed, cond.windBearing);
             }
