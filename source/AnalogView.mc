@@ -148,9 +148,23 @@ class AnalogView extends WatchUi.WatchFace {
     // mode (DeviceSettings has no flag, WatchFace has no query), and a dropped
     // onExitSleep (a known AMOLED/fenix quirk) otherwise strands the face in the
     // low-power draw forever. We infer the real mode from onUpdate frequency: ~1 Hz
-    // awake vs once/min asleep.
+    // awake vs once/min asleep. Two recovery paths (see onUpdate):
+    //   - Slow path (always-on / AOD wake): a *continuous* fast stream that lasts
+    //     RECOVER_MS, longer than the ~1.5 s low-power burst, so a burst can't trip it.
+    //   - Fast path (non-AOD gesture wake): the screen is dark while asleep, so NO
+    //     onUpdate fires until the wake -- a fast frame after >= SILENCE_MS of silence
+    //     is therefore a real wake, recovered on the *first* frame (the slow path can't,
+    //     because a non-AOD wake is only ~3 s, shorter than RECOVER_MS). This first-frame
+    //     wake is *tentative*: if the stream then dies like a burst instead of continuing
+    //     like a wake (i.e. an anomalous AOD gap > SILENCE_MS, not a real wake), it
+    //     reverts, bounding a misfire to one ~1.5 s burst rather than a permanent
+    //     stuck-awake. A wake that outlasts CONFIRM_MS is locked in.
+    private const SILENCE_MS = 90000;  // gap above the ~60 s AOD burst cycle => screen was off => real wake
+    private const CONFIRM_MS = 2500;   // fast stream beyond a burst's ~1.5 s lifetime => lock the tentative wake in
+    private const RECOVER_MS = 5000;   // continuous fast run that clears a stuck flag with no preceding silence
     private var _lastUpdateMs as Number = -1;    // System.getTimer() at last onUpdate (-1 = none yet)
     private var _fastRunStartMs as Number = -1;  // start of the current run of fast (<30 s) intervals (-1 = none)
+    private var _tentativeWake as Boolean = false; // woke on a post-silence frame, not yet confirmed by a lasting stream
     // One-shot: defer the next moon bake off a wake/cold frame (the bake is heavy and
     // can overrun the wake power budget, throttling the device back to low power -- the
     // symptom seen just after install). Default true so the first paint defers.
@@ -201,27 +215,45 @@ class AnalogView extends WatchUi.WatchFace {
     //! minute in low-power (sleep) mode.
     function onUpdate(dc as Graphics.Dc) as Void {
         // Recover from a stuck sleep flag (a dropped onExitSleep leaves the face in the
-        // low-power draw forever; there is no API to query power mode). Infer it from the
-        // onUpdate stream: a genuinely-awake watch delivers *continuous* fast updates,
-        // whereas low power delivers only a short burst (~1.5 s of a few updates) once a
-        // minute -- and the sleep transition fires a similar burst. So counting fast
-        // frames is fooled every minute; instead require the run of consecutive fast
-        // (<30 s apart) intervals to last several seconds, which only a truly awake
-        // stream reaches. A long gap (or a negative delta from a timer wrap) breaks the
-        // run. (Measured in the sim: awake ~2 Hz; low-power burst ~1.5 s then a ~58 s gap.)
+        // low-power draw forever; there is no API to query power mode). Infer the real
+        // mode from the onUpdate stream -- see the two-path note by _isSleeping. A long
+        // gap (or a negative delta from a timer wrap) breaks the fast run. (Measured in
+        // the sim: awake ~2 Hz; low-power burst ~1.5 s of a few updates then a ~58 s gap.)
         var nowMs = System.getTimer();
-        if (_lastUpdateMs >= 0) {
-            var dms = nowMs - _lastUpdateMs;
-            if (dms >= 0 && dms < 30000) {
-                if (_fastRunStartMs < 0) {  // run starts at the earlier of the two frames
-                    _fastRunStartMs = _lastUpdateMs;
-                }
-            } else {
-                _fastRunStartMs = -1;
+        var dms = (_lastUpdateMs >= 0) ? (nowMs - _lastUpdateMs) : -1;
+        if (dms >= 0 && dms < 30000) {
+            if (_fastRunStartMs < 0) {  // run starts at the earlier of the two frames
+                _fastRunStartMs = _lastUpdateMs;
             }
+        } else {
+            _fastRunStartMs = -1;
         }
         _lastUpdateMs = nowMs;
-        if (_isSleeping && _fastRunStartMs >= 0 && (nowMs - _fastRunStartMs) >= 5000) {
+        if (dms >= SILENCE_MS) {
+            // Fast path: a frame after long silence. The screen was off (non-AOD sleep
+            // emits no onUpdate), so this is a real gesture wake -- recover immediately,
+            // tentatively (revert below if the stream turns out to be an AOD burst).
+            if (_isSleeping) {
+                _isSleeping = false;
+                _deferBake = true;       // keep the now-needed moon bake off this recovery frame
+                _tentativeWake = true;
+                _fastRunStartMs = nowMs;  // time the continued stream toward confirmation
+            } else if (_tentativeWake) {
+                _fastRunStartMs = nowMs;  // a fresh wake mid-tentative: restart the confirm clock
+            }
+        } else if (_tentativeWake) {
+            if (dms >= 0 && dms < 30000) {
+                if (_fastRunStartMs >= 0 && (nowMs - _fastRunStartMs) >= CONFIRM_MS) {
+                    _tentativeWake = false;  // outlasted an AOD burst -> a real wake, lock it in
+                }
+            } else {
+                _isSleeping = true;          // stream broke before confirming -> it was a burst, not a wake
+                _tentativeWake = false;
+                _fastRunStartMs = -1;
+            }
+        } else if (_isSleeping && _fastRunStartMs >= 0 && (nowMs - _fastRunStartMs) >= RECOVER_MS) {
+            // Slow path: a continuous fast stream with no preceding silence -- a dropped
+            // onExitSleep on an always-on (AOD) wake, where the stream outlasts a burst.
             _isSleeping = false;
             _deferBake = true;  // keep the now-needed moon bake off this recovery frame
             _fastRunStartMs = -1;
@@ -2232,6 +2264,7 @@ class AnalogView extends WatchUi.WatchFace {
     function onEnterSleep() as Void {
         _isSleeping = true;
         _fastRunStartMs = -1;  // break the awake fast run so the post-sleep burst can't re-wake
+        _tentativeWake = false;
         WatchUi.requestUpdate();
     }
 
@@ -2239,6 +2272,7 @@ class AnalogView extends WatchUi.WatchFace {
         _isSleeping = false;
         _deferBake = true;  // keep the first post-wake moon bake off this frame
         _fastRunStartMs = -1;
+        _tentativeWake = false;  // a real callback confirms the wake outright
         WatchUi.requestUpdate();
     }
 }
